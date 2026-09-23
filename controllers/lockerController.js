@@ -770,7 +770,26 @@ async function updateTelemetry(req, res) {
     led_color: locker.led_color,
   });
 }
+/**
+ * POST /api/v1/admin/verify
+ * Chỉ kiểm tra mật khẩu admin, không làm gì khác.
+ */
+function verifyAdminKey(req, res) {
+  const { adminKey } = req.body || {};
+  const ADMIN_SECRET = process.env.ADMIN_SECRET_KEY || 'admin@smartbox123';
 
+  if (adminKey !== ADMIN_SECRET) {
+    return res.status(403).json({
+      success: false,
+      message: 'Mật khẩu không đúng',
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: 'Xác thực thành công',
+  });
+}
 // ---------------------------------------------------------------------------
 // POST /api/v1/admin/emergency-unlock
 // ---------------------------------------------------------------------------
@@ -851,4 +870,5 @@ module.exports = {
   resendOtp,
   updateTelemetry,
   emergencyUnlock,
+  verifyAdminKey, 
 };

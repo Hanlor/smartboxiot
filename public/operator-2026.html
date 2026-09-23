@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Operator Console — Smart Box</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: { 500: '#6366F1', 600: '#4F46E5', 700: '#4338CA' }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body { -webkit-tap-highlight-color: transparent; }
+    .glass { backdrop-filter: blur(12px); background: rgba(255, 255, 255, 0.85); }
+    .grid-bg {
+      background-image:
+        linear-gradient(rgba(99,102,241,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99,102,241,0.05) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+  </style>
+</head>
+
+<body class="font-sans bg-slate-900 min-h-screen text-slate-100 antialiased grid-bg">
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- LOGIN SCREEN                                 -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div id="loginScreen" class="min-h-screen flex items-center justify-center p-5">
+    <div class="w-full max-w-sm animate-fade-in">
+      <div class="text-center mb-8">
+        <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-2xl shadow-brand-500/40">
+          <i data-lucide="shield-check" class="text-white" style="width:28px;height:28px;"></i>
+        </div>
+        <h1 class="text-xl font-extrabold text-white">Operator Console</h1>
+        <p class="text-xs text-slate-400 mt-1">Hệ thống vận hành Smart Box</p>
+      </div>
+
+      <div class="bg-slate-800/70 backdrop-blur border border-slate-700 rounded-2xl p-6 shadow-2xl">
+        <label class="block text-xs font-semibold text-slate-300 mb-2">MẬT KHẨU QUẢN TRỊ</label>
+        <div class="relative mb-4">
+          <input id="adminKeyInput" type="password" placeholder="••••••••••"
+                 class="w-full px-4 py-3 pr-12 rounded-xl bg-slate-900/70 border border-slate-700 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none text-white text-sm font-mono transition"
+                 autocomplete="current-password">
+          <button type="button" onclick="togglePassword()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1">
+            <i id="eyeIcon" data-lucide="eye" style="width:18px;height:18px;"></i>
+          </button>
+        </div>
+
+        <div id="loginError" class="hidden mb-4 px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+          Sai mật khẩu. Vui lòng thử lại.
+        </div>
+
+        <button id="loginBtn" onclick="handleLogin()"
+                class="w-full py-3 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 hover:from-brand-600 hover:to-brand-700 active:scale-[0.98] transition font-bold text-white text-sm shadow-lg shadow-brand-500/30 flex items-center justify-center gap-2">
+          <i data-lucide="log-in" style="width:16px;height:16px;"></i>
+          Đăng nhập
+        </button>
+
+        <div class="mt-4 text-center text-[10px] text-slate-500">
+          Chỉ dành cho nhân viên vận hành
+        </div>
+      </div>
+
+      <div class="mt-6 text-center">
+        <a href="/" class="text-xs text-slate-500 hover:text-slate-300 transition">← Về trang chủ</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- DASHBOARD                                    -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div id="dashboard" class="hidden">
+
+    <!-- Top bar -->
+    <header class="glass-dark sticky top-0 z-50 border-b border-slate-800 bg-slate-900/85">
+      <div class="max-w-6xl mx-auto px-5 h-14 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
+            <i data-lucide="shield-check" class="text-white" style="width:16px;height:16px;"></i>
+          </div>
+          <div>
+            <div class="font-bold text-white text-sm leading-none">OPERATOR CONSOLE</div>
+            <div class="text-[10px] text-slate-400 leading-none mt-1">Smart Box IoT System</div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-[10px] font-semibold text-emerald-300" id="connStatus">Connected</span>
+          </div>
+          <button onclick="handleLogout()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-300 transition flex items-center gap-1.5">
+            <i data-lucide="log-out" style="width:12px;height:12px;"></i>
+            <span class="hidden sm:inline">Đăng xuất</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-5 py-6">
+
+      <!-- Stats -->
+      <section class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Tổng tủ</span>
+            <i data-lucide="package" class="text-brand-400" style="width:16px;height:16px;"></i>
+          </div>
+          <div class="text-2xl font-extrabold text-white" id="statTotal">3</div>
+        </div>
+        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Trống</span>
+            <i data-lucide="circle-check" class="text-emerald-400" style="width:16px;height:16px;"></i>
+          </div>
+          <div class="text-2xl font-extrabold text-emerald-400" id="statAvailable">0</div>
+        </div>
+        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Có hàng</span>
+            <i data-lucide="circle-alert" class="text-rose-400" style="width:16px;height:16px;"></i>
+          </div>
+          <div class="text-2xl font-extrabold text-rose-400" id="statOccupied">0</div>
+        </div>
+        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Chờ</span>
+            <i data-lucide="clock" class="text-amber-400" style="width:16px;height:16px;"></i>
+          </div>
+          <div class="text-2xl font-extrabold text-amber-400" id="statPending">0</div>
+        </div>
+      </section>
+
+      <!-- Emergency all -->
+      <section class="mb-6">
+        <button onclick="emergencyUnlockAll()"
+                class="w-full py-4 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 active:scale-[0.99] transition font-bold text-white text-sm shadow-lg shadow-rose-600/30 flex items-center justify-center gap-2">
+          <i data-lucide="alert-triangle" style="width:18px;height:18px;"></i>
+          MỞ KHẨN CẤP TOÀN BỘ 3 TỦ
+        </button>
+      </section>
+
+      <!-- Lockers grid -->
+      <section class="mb-6">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Trạng thái tủ</h2>
+        <div id="lockersGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Filled by JS -->
+        </div>
+      </section>
+
+      <!-- LCD Preview -->
+      <section class="mb-6">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Màn hình LCD</h2>
+        <div class="bg-black border-4 border-slate-700 rounded-2xl p-4 shadow-2xl">
+          <div id="lcdPreview" class="font-mono text-[13px] leading-6 text-emerald-400 whitespace-pre">
+            <div>--- TU SMART BOX ---</div>
+            <div>N1:TRONG  N2:TRONG </div>
+            <div>N3:TRONG            </div>
+            <div>&gt; QUET QR/NHAP OTP &lt;</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Log -->
+      <section>
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Nhật ký hoạt động</h2>
+        <div id="actionLog" class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 max-h-48 overflow-y-auto font-mono text-[11px] space-y-1">
+          <div class="text-slate-500">Chưa có hoạt động nào.</div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="max-w-6xl mx-auto px-5 pb-8 pt-4">
+      <div class="text-center text-[10px] text-slate-500">
+        Smart Box IoT System • Operator Console v1.0
+      </div>
+    </footer>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- SCRIPTS                                      -->
+  <!-- ═══════════════════════════════════════════ -->
+  <script>
+    lucide.createIcons();
+
+    const API_BASE = window.location.origin;
+    let adminKey = sessionStorage.getItem('admin_key') || '';
+    let pollTimer = null;
+
+    const STATUS_MAP = {
+      'AVAILABLE':      { label: 'TRỐNG',        color: 'emerald', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-400' },
+      'PENDING_SENDER': { label: 'CHỜ XÁC THỰC', color: 'amber',   bg: 'bg-amber-500/10',   border: 'border-amber-500/30',   text: 'text-amber-400' },
+      'RESERVED':       { label: 'GIỮ CHỖ',      color: 'amber',   bg: 'bg-amber-500/10',   border: 'border-amber-500/30',   text: 'text-amber-400' },
+      'DEPOSITING':     { label: 'ĐANG GỬI',     color: 'amber',   bg: 'bg-amber-500/10',   border: 'border-amber-500/30',   text: 'text-amber-400' },
+      'OCCUPIED':       { label: 'CÓ HÀNG',      color: 'rose',    bg: 'bg-rose-500/10',    border: 'border-rose-500/30',    text: 'text-rose-400' },
+      'PICKING':        { label: 'ĐANG LẤY',     color: 'amber',   bg: 'bg-amber-500/10',   border: 'border-amber-500/30',   text: 'text-amber-400' },
+      'MAINTENANCE':    { label: 'BẢO TRÌ',      color: 'slate',   bg: 'bg-slate-500/10',   border: 'border-slate-500/30',   text: 'text-slate-400' },
+      'EMERGENCY':      { label: 'KHẨN CẤP',     color: 'red',     bg: 'bg-red-500/10',     border: 'border-red-500/30',     text: 'text-red-400' },
+    };
+
+    // ─── LOGIN ───
+    function togglePassword() {
+      const inp = document.getElementById('adminKeyInput');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    }
+
+    async function handleLogin() {
+      const key = document.getElementById('adminKeyInput').value.trim();
+      const errEl = document.getElementById('loginError');
+      const btn = document.getElementById('loginBtn');
+
+      if (!key) return;
+
+      btn.disabled = true;
+      btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" style="width:16px;height:16px;"></i> Đang kiểm tra...';
+      lucide.createIcons();
+      errEl.classList.add('hidden');
+
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/admin/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ adminKey: key }),
+        });
+
+        if (res.ok) {
+          adminKey = key;
+          sessionStorage.setItem('admin_key', key);
+          showDashboard();
+        } else {
+          errEl.classList.remove('hidden');
+          btn.disabled = false;
+          btn.innerHTML = '<i data-lucide="log-in" style="width:16px;height:16px;"></i> Đăng nhập';
+          lucide.createIcons();
+        }
+      } catch (e) {
+        errEl.textContent = 'Không kết nối được server.';
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="log-in" style="width:16px;height:16px;"></i> Đăng nhập';
+        lucide.createIcons();
+      }
+    }
+
+    // Enter to login
+    document.getElementById('adminKeyInput').addEventListener('keypress', e => {
+      if (e.key === 'Enter') handleLogin();
+    });
+
+    // ─── DASHBOARD ───
+    function showDashboard() {
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('dashboard').classList.remove('hidden');
+      pollLockers();
+      pollTimer = setInterval(pollLockers, 2000);
+    }
+
+    function handleLogout() {
+      adminKey = '';
+      sessionStorage.removeItem('admin_key');
+      if (pollTimer) clearInterval(pollTimer);
+      document.getElementById('dashboard').classList.add('hidden');
+      document.getElementById('loginScreen').classList.remove('hidden');
+      document.getElementById('adminKeyInput').value = '';
+    }
+
+    // ─── POLL ───
+    async function pollLockers() {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/lockers`);
+        const data = await res.json();
+        renderLockers(data.lockers);
+        renderLcd(data.lcd_preview);
+        updateStats(data.lockers);
+        document.getElementById('connStatus').textContent = 'Connected';
+      } catch (e) {
+        document.getElementById('connStatus').textContent = 'Offline';
+      }
+    }
+
+    function renderLockers(lockers) {
+      const grid = document.getElementById('lockersGrid');
+      grid.innerHTML = lockers.map(L => {
+        const s = STATUS_MAP[L.status] || STATUS_MAP['MAINTENANCE'];
+        const doorIcon = L.door_closed ? '🔒' : '🔓';
+        const itemIcon = L.has_item ? '📦' : '⚪';
+
+        return `
+          <div class="${s.bg} border ${s.border} rounded-2xl p-5 transition">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-lg font-extrabold text-white">TỦ #${L.locker_id}</span>
+                <span class="text-[10px] text-slate-400 px-2 py-0.5 rounded bg-slate-800 border border-slate-700">${L.size}</span>
+              </div>
+              <span class="w-2.5 h-2.5 rounded-full ${s.text === 'text-emerald-400' ? 'bg-emerald-400' : s.text === 'text-rose-400' ? 'bg-rose-400' : s.text === 'text-amber-400' ? 'bg-amber-400' : 'bg-slate-400'} animate-pulse"></span>
+            </div>
+
+            <div class="mb-3">
+              <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Trạng thái</div>
+              <div class="text-base font-extrabold ${s.text}">${s.label}</div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mb-4 text-xs">
+              <div class="bg-slate-900/50 rounded-lg px-2.5 py-1.5">
+                <div class="text-[9px] text-slate-500 mb-0.5">Cửa</div>
+                <div class="font-mono font-bold text-white">${doorIcon} ${L.door_closed ? 'Đóng' : 'Mở'}</div>
+              </div>
+              <div class="bg-slate-900/50 rounded-lg px-2.5 py-1.5">
+                <div class="text-[9px] text-slate-500 mb-0.5">Hàng</div>
+                <div class="font-mono font-bold text-white">${itemIcon} ${L.has_item ? 'Có' : 'Không'}</div>
+              </div>
+            </div>
+
+            <button onclick="emergencyUnlockOne(${L.locker_id})"
+                    class="w-full py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-rose-500/50 transition text-xs font-bold text-slate-300 hover:text-rose-300 flex items-center justify-center gap-1.5">
+              <i data-lucide="unlock" style="width:13px;height:13px;"></i>
+              Mở khẩn cấp
+            </button>
+          </div>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function renderLcd(lp) {
+      if (!lp) return;
+      const el = document.getElementById('lcdPreview');
+      el.innerHTML = `
+        <div>${lp.line1 || ''}</div>
+        <div>${lp.line2 || ''}</div>
+        <div>${lp.line3 || ''}</div>
+        <div>${(lp.line4 || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+      `;
+    }
+
+    function updateStats(lockers) {
+      document.getElementById('statTotal').textContent = lockers.length;
+      document.getElementById('statAvailable').textContent = lockers.filter(L => L.status === 'AVAILABLE').length;
+      document.getElementById('statOccupied').textContent = lockers.filter(L => L.status === 'OCCUPIED').length;
+      document.getElementById('statPending').textContent = lockers.filter(L =>
+        ['PENDING_SENDER', 'RESERVED', 'DEPOSITING', 'PICKING'].includes(L.status)).length;
+    }
+
+    // ─── ADMIN ACTIONS ───
+    async function emergencyUnlockOne(lockerId) {
+      if (!confirm(`MỞ KHẨN CẤP TỦ #${lockerId}?\n\nChỉ dùng khi có sự cố.`)) return;
+      await callEmergencyUnlock({ adminKey, locker_id: lockerId });
+      log(`🚨 Đã mở khẩn cấp TỦ #${lockerId}`);
+    }
+
+    async function emergencyUnlockAll() {
+      if (!confirm('MỞ KHẨN CẤP TOÀN BỘ 3 TỦ?\n\nHành động này sẽ mở hết khóa.\nXác nhận?')) return;
+      await callEmergencyUnlock({ adminKey, unlockAll: true });
+      log('🚨🚨 ĐÃ MỞ KHẨN CẤP TOÀN BỘ 3 TỦ!');
+    }
+
+    async function callEmergencyUnlock(body) {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/admin/emergency-unlock`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alert('Lỗi: ' + (data.message || 'Không rõ nguyên nhân'));
+        }
+      } catch (e) {
+        alert('Không kết nối được server.');
+      }
+    }
+
+    // ─── LOG ───
+    function log(msg) {
+      const el = document.getElementById('actionLog');
+      const time = new Date().toLocaleTimeString('vi-VN');
+      const div = document.createElement('div');
+      div.className = 'text-slate-300';
+      div.textContent = `[${time}] ${msg}`;
+      if (el.firstChild && el.firstChild.classList && el.firstChild.classList.contains('text-slate-500')) {
+        el.innerHTML = '';
+      }
+      el.insertBefore(div, el.firstChild);
+      while (el.children.length > 50) el.removeChild(el.lastChild);
+    }
+
+    // ─── AUTO-LOGIN if key exists ───
+    (async () => {
+      if (adminKey) {
+        try {
+          const res = await fetch(`${API_BASE}/api/v1/admin/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminKey }),
+          });
+          if (res.ok) showDashboard();
+          else sessionStorage.removeItem('admin_key');
+        } catch (e) {}
+      }
+    })();
+  </script>
+
+</body>
+</html>

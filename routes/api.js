@@ -11,6 +11,7 @@ router.post('/shipments/open-deposit', lockerController.openDeposit);
 router.post('/shipments/verify-otp', lockerController.verifyOtp);
 router.post('/shipments/resend-otp', lockerController.resendOtp);
 router.post('/telemetry/update', lockerController.updateTelemetry);
+router.post('/admin/verify', lockerController.verifyAdminKey);
 router.post('/admin/emergency-unlock', lockerController.emergencyUnlock);
 
 module.exports = router;
