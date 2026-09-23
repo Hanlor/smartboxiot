@@ -207,29 +207,29 @@ function publicLockerView(locker) {
 }
 
 async function sendSMSViaAndroid(phone, otp) {
-  const USERNAME = 'sms';
-  const PASSWORD = 'o4uAdpeJ';
+  const SMS_GATEWAY_URL = process.env.SMS_GATEWAY_URL || 'https://api.sms-gate.app/3rdparty/v1/messages';
+  const USERNAME = process.env.SMS_GATEWAY_USER || '-B-12Y';
+  const PASSWORD = process.env.SMS_GATEWAY_PASS || 'xme1yle6eczm2t';
 
   const authHeader = 'Basic ' + Buffer.from(`${USERNAME}:${PASSWORD}`).toString('base64');
 
   const payload = {
     phoneNumbers: [phone],
     textMessage: {
-      text: `SmartBox: Ma OTP mo tu o cua ban la ${otp}. Ma co hieu luc trong 5 phut. Vui long khong chia se ma nay cho nguoi khac!`,
+      text: `SmartBox: Ma OTP mo tu o cua ban la ${otp}. Ma co hieu luc trong 5 phut.`,
     }
   };
 
   try {
     const response = await axios.post(SMS_GATEWAY_URL, payload, {
       timeout: 10000,
-      family: 4,
       headers: { 
         'Content-Type': 'application/json',
         'Authorization': authHeader
       },
     });
 
-    console.log(`📱 [SMS SUCCESS] Đã gửi mã OTP (${otp}) tới SĐT: ${phone}`);
+    console.log(`📱 [SMS CLOUD SUCCESS] Đã gửi mã OTP (${otp}) tới SĐT: ${phone}`);
     return { sent: true, status: response.status };
   } catch (error) {
     const detail = error.response
@@ -520,68 +520,3 @@ module.exports = {
   OTP_LOCKOUT_MS,
   STATE_FILE,
 };
-// ====================================================
-// API: MỞ KHÓA KHẨN CẤP DÀNH CHO ADMIN
-// ====================================================
-app.post('/api/v1/admin/emergency-unlock', (req, res) => {
-  const { adminKey, locker_id, unlockAll } = req.body;
-
-  // 1. Kiểm tra khóa bảo mật Admin (Lấy từ .env hoặc mặc định)
-  const ADMIN_SECRET = process.env.ADMIN_SECRET_KEY || 'admin@smartbox123';
-  if (adminKey !== ADMIN_SECRET) {
-    return res.status(403).json({ 
-      success: false, 
-      message: '❌ Mật khẩu khẩn cấp Admin không đúng!' 
-    });
-  }
-
-  // 2. Xử lý mở tủ
-  if (unlockAll) {
-    // Chế độ: Mở TOÀN BỘ các ô tủ
-    lockers.forEach(locker => {
-      locker.servo_angle = 0;       // Góc 0 = Mở khóa
-      locker.status = 'EMERGENCY';   // Gán nhãn khẩn cấp
-    });
-
-    lcd_preview = {
-      line1: '🚨 CANH BAO ADMIN 🚨',
-      line2: 'MO KHAAN CAP!',
-      line3: 'TOAN BO TU DA MO',
-      line4: 'Kiem tra ky phan cung'
-    };
-
-    console.log('🚨 [ADMIN EMERGENCY] ĐÃ KÍCH HOẠT MỞ KHẨN CẤP TOÀN BỘ TỦ!');
-
-  } else if (locker_id) {
-    // Chế độ: Mở 1 ô tủ chỉ định
-    const targetLocker = lockers.find(l => l.locker_id === parseInt(locker_id));
-    if (!targetLocker) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy ID ô tủ!' });
-    }
-
-    targetLocker.servo_angle = 0;     // Góc 0 = Mở khóa
-    targetLocker.status = 'EMERGENCY';
-
-    lcd_preview = {
-      line1: '🚨 CANH BAO ADMIN 🚨',
-      line2: `MO KHAN CAP TU ${locker_id}`,
-      line3: 'Yeu cau admin khoi',
-      line4: 'phuc lai sau khi xong'
-    };
-
-    console.log(`🚨 [ADMIN EMERGENCY] Đã kích hoạt mở khẩn cấp Ô Tủ #${locker_id}`);
-
-  } else {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Vui lòng truyền locker_id hoặc unlockAll: true' 
-    });
-  }
-
-  return res.json({
-    success: true,
-    message: '⚡ Lệnh mở khóa khẩn cấp đã được phát!',
-    lockers,
-    lcd_preview
-  });
-});
