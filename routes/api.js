@@ -9,4 +9,7 @@ router.post('/shipments/open-deposit', lockerController.openDeposit);
 router.post('/shipments/verify-otp', lockerController.verifyOtp);
 router.post('/telemetry/update', lockerController.updateTelemetry);
 
+// --- THÊM ROUTE ADMIN Ở ĐÂY ---
+router.post('/admin/emergency-unlock', lockerController.emergencyUnlock);
+
 module.exports = router;

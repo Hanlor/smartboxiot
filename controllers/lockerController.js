@@ -321,9 +321,31 @@ async function updateTelemetry(req, res) {
   }
 
   const locker = db.lockers.get(lockerId);
+
+  // --- THÊM ĐOẠN NÀY: Xử lý đóng tủ sau khi Admin Mở khẩn cấp ---
+  if (locker.status === 'EMERGENCY') {
+    locker.door_closed = door.value;
+    locker.has_item = item.value;
+
+    if (locker.door_closed) {
+      // Khi Admin đóng cửa tủ lại -> Khóa Servo lại (góc 90) và trả về trạng thái hoạt động
+      const newStatus = locker.has_item ? constants.LOCKER_STATUS.OCCUPIED : constants.LOCKER_STATUS.AVAILABLE;
+      helpers.applyStatus(locker, newStatus);
+      helpers.persistState();
+
+      console.log(`✅ [ADMIN RESET] Ô Tủ #${lockerId} đã đóng cửa & khóa an toàn.`);
+    }
+
+    return res.status(200).json({
+      success: true,
+      current_status: locker.status,
+      led_color: locker.led_color,
+    });
+  }
+  // -------------------------------------------------------------
+
   locker.door_closed = door.value;
   locker.has_item = item.value;
-
   const { LOCKER_STATUS: S } = constants;
 
   // Double-check: DEPOSITING -> OCCUPIED only if door closed AND item present.
@@ -425,6 +447,7 @@ module.exports = {
   openDeposit,
   verifyOtp,
   updateTelemetry,
+  emergencyUnlock, // <-- BẮT BUỘC Phải có dòng này!
 };
 // Dán hàm này trực tiếp vào controllers/lockerController.js
 // 1. Kiểm tra lại IP trên màn hình App điện thoại (Tab HOME) để lấy đúng IP
@@ -469,4 +492,69 @@ async function sendOTP_SMS(recipientPhone, otpCode) {
       console.error('❌ [SMS ERROR] Không thể kết nối điện thoại:', error.message);
     }
   }
+}
+/**
+ * POST /api/v1/admin/emergency-unlock
+ * Admin Mở khóa khẩn cấp 1 hoặc toàn bộ các ô tủ.
+ */
+function emergencyUnlock(req, res) {
+  const { db, helpers } = getCtx(req);
+  const { adminKey, locker_id, unlockAll } = req.body || {};
+
+  // 1. Kiểm tra Mật khẩu Admin Khẩn cấp (mặc định 'admin@smartbox123' hoặc cấu hình qua .env)
+  const ADMIN_SECRET = process.env.ADMIN_SECRET_KEY || 'admin@smartbox123';
+  if (adminKey !== ADMIN_SECRET) {
+    return res.status(403).json({
+      success: false,
+      message: '❌ Mật khẩu khẩn cấp Admin không đúng!',
+    });
+  }
+
+  // 2. Xử lý mở tủ khẩn cấp
+  if (unlockAll) {
+    // Chế độ: Mở TOÀN BỘ 3 ô tủ
+    for (const locker of db.lockers.values()) {
+      locker.servo_angle = 0; // Xoay Servo về góc 0 độ để mở chốt
+      locker.status = 'EMERGENCY';
+      locker.led_color = 'RED';
+      locker.led_blink = true;
+    }
+    console.log('🚨 [ADMIN EMERGENCY] ĐÃ KÍCH HOẠT MỞ KHẨN CẤP TOÀN BỘ TỦ!');
+
+  } else if (locker_id) {
+    // Chế độ: Mở 1 ô tủ chỉ định
+    const lockerId = parseLockerId(locker_id);
+    if (!lockerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'locker_id phải là 1, 2, hoặc 3',
+      });
+    }
+
+    const locker = db.lockers.get(lockerId);
+    locker.servo_angle = 0; // Xoay Servo về góc 0 độ để mở chốt
+    locker.status = 'EMERGENCY';
+    locker.led_color = 'RED';
+    locker.led_blink = true;
+
+    console.log(`🚨 [ADMIN EMERGENCY] Đã kích hoạt mở khẩn cấp Ô Tủ #${lockerId}`);
+
+  } else {
+    return res.status(400).json({
+      success: false,
+      message: 'Vui lòng truyền locker_id (1-3) hoặc unlockAll: true',
+    });
+  }
+
+  // Lưu trạng thái ngay lập tức vào database/file state
+  helpers.persistState();
+
+  const lockersList = [1, 2, 3].map((id) => helpers.publicLockerView(db.lockers.get(id)));
+
+  return res.status(200).json({
+    success: true,
+    message: '⚡ Lệnh mở khóa khẩn cấp đã được phát thành công!',
+    lockers: lockersList,
+    lcd_preview: helpers.generateLcdPreview(),
+  });
 }

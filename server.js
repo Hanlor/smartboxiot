@@ -10,13 +10,24 @@ const cors = require('cors');
 const crypto = require('crypto');
 const axios = require('axios');
 
-// 1. KẾT NỐI DATABASE SQLITE (Đổi tên thành sqliteDb để tránh trùng biến)
+// 1. Khởi tạo Express App (CHỈ KHAI BÁO 1 LẦN DUY NHẤT Ở ĐÂY)
+const app = express();
+
+// 2. Cấu hình CORS mở rộng (Cho phép v0.dev & mọi Client gọi vào không bị chặn)
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.use(express.json({ limit: '32kb' }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+// 3. KẾT NỐI DATABASE SQLITE
 const sqliteDb = require('./database');
 
-
-
 const PORT = process.env.PORT || 3000;
-const SMS_GATEWAY_URL = 'http://192.168.1.5:8080/message'; // Đưa ra global scope
+const SMS_GATEWAY_URL = 'http://192.168.1.5:8080/message';
 const OTP_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const RESERVATION_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const OTP_MAX_FAILURES = 5;
@@ -54,13 +65,13 @@ const LOCKER_DEFAULTS = [
 ];
 
 // ---------------------------------------------------------------------------
-// In-memory data store (Giữ nguyên để tương thích 100% với routes/api.js)
+// In-memory data store
 // ---------------------------------------------------------------------------
 const db = {
   lockers: new Map(),
   shipments: new Map(),
   otps: new Map(),
-  otpSecurity: new Map(), // recipient_phone -> { failed_attempts, locked_until }
+  otpSecurity: new Map(),
 };
 
 function createLocker(lockerId, size) {
@@ -204,7 +215,7 @@ async function sendSMSViaAndroid(phone, otp) {
   const payload = {
     phoneNumbers: [phone],
     textMessage: {
-      text: `SmartBox: Ma OTP mo tu o cua ban la ${otp}. Ma co hieu luc trong 5 phut.`,
+      text: `SmartBox: Ma OTP mo tu o cua ban la ${otp}. Ma co hieu luc trong 5 phut. Vui long khong chia se ma nay cho nguoi khac!`,
     }
   };
 
@@ -244,15 +255,10 @@ function serializeState() {
   };
 }
 
-/**
- * Lưu dữ liệu đồng thời vào state.json VÀ SQLite database (smartbox.db)
- */
 function saveStateToFile() {
   try {
-    // 1. Ghi vào file JSON dự phòng
     fs.writeFileSync(STATE_FILE, JSON.stringify(serializeState(), null, 2), 'utf8');
 
-    // 2. Tự động đồng bộ trạng thái tủ vào CSDL SQLite
     for (const [id, locker] of db.lockers.entries()) {
       sqliteDb.run(
         `INSERT INTO lockers (id, status, door_closed, has_item) 
@@ -304,14 +310,10 @@ function loadStateFromFile() {
 }
 
 function persistState() {
-  // 1. Lưu file JSON dự phòng gốc
   saveStateToFile();
 
-  // 2. Đồng bộ xuống SQLite (Dùng trực tiếp module database đã require ở đầu file)
-  const sqliteDb = require('./database');
   if (!sqliteDb) return;
 
-  // Đồng bộ Lockers
   for (const [id, locker] of db.lockers.entries()) {
     sqliteDb.run(`
       INSERT INTO lockers (id, status, door_closed, has_item, shipment_id, sender_phone, recipient_phone, qr_token, reserved_at)
@@ -333,7 +335,6 @@ function persistState() {
     ]);
   }
 
-  // Đồng bộ Shipments
   for (const [shipment_id, s] of db.shipments.entries()) {
     sqliteDb.run(`
       INSERT INTO shipments (shipment_id, locker_id, sender_phone, recipient_phone, qr_token, status, created_at, occupied_at, completed_at, aborted_at)
@@ -354,7 +355,6 @@ function persistState() {
     ]);
   }
 
-  // Đồng bộ OTPs
   for (const [code, otp] of db.otps.entries()) {
     sqliteDb.run(`
       INSERT INTO otps (otp_code, locker_id, shipment_id, recipient_phone, expires_at, used)
@@ -370,6 +370,7 @@ function persistState() {
     ]);
   }
 }
+
 function getOtpSecurity(phone) {
   if (!db.otpSecurity.has(phone)) {
     db.otpSecurity.set(phone, { failed_attempts: 0, locked_until: 0 });
@@ -439,15 +440,11 @@ sweepTransientState();
 setInterval(() => sweepTransientState(), 15_000).unref();
 
 // ---------------------------------------------------------------------------
-// Express application
+// Setup App Locals & Routes
 // ---------------------------------------------------------------------------
-const app = express();
-
-app.use(cors());
-app.use(express.json({ limit: '32kb' }));
 
 app.locals.db = db;
-app.locals.sqliteDb = sqliteDb; // 👈 Đưa SQLite Instance vào Express Locals
+app.locals.sqliteDb = sqliteDb;
 app.locals.constants = {
   LOCKER_STATUS,
   OTP_TTL_MS,
@@ -523,5 +520,68 @@ module.exports = {
   OTP_LOCKOUT_MS,
   STATE_FILE,
 };
-// Thêm dòng này ngay sau app.use(cors());
-app.use(express.static(path.join(__dirname, 'public')));
+// ====================================================
+// API: MỞ KHÓA KHẨN CẤP DÀNH CHO ADMIN
+// ====================================================
+app.post('/api/v1/admin/emergency-unlock', (req, res) => {
+  const { adminKey, locker_id, unlockAll } = req.body;
+
+  // 1. Kiểm tra khóa bảo mật Admin (Lấy từ .env hoặc mặc định)
+  const ADMIN_SECRET = process.env.ADMIN_SECRET_KEY || 'admin@smartbox123';
+  if (adminKey !== ADMIN_SECRET) {
+    return res.status(403).json({ 
+      success: false, 
+      message: '❌ Mật khẩu khẩn cấp Admin không đúng!' 
+    });
+  }
+
+  // 2. Xử lý mở tủ
+  if (unlockAll) {
+    // Chế độ: Mở TOÀN BỘ các ô tủ
+    lockers.forEach(locker => {
+      locker.servo_angle = 0;       // Góc 0 = Mở khóa
+      locker.status = 'EMERGENCY';   // Gán nhãn khẩn cấp
+    });
+
+    lcd_preview = {
+      line1: '🚨 CANH BAO ADMIN 🚨',
+      line2: 'MO KHAAN CAP!',
+      line3: 'TOAN BO TU DA MO',
+      line4: 'Kiem tra ky phan cung'
+    };
+
+    console.log('🚨 [ADMIN EMERGENCY] ĐÃ KÍCH HOẠT MỞ KHẨN CẤP TOÀN BỘ TỦ!');
+
+  } else if (locker_id) {
+    // Chế độ: Mở 1 ô tủ chỉ định
+    const targetLocker = lockers.find(l => l.locker_id === parseInt(locker_id));
+    if (!targetLocker) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy ID ô tủ!' });
+    }
+
+    targetLocker.servo_angle = 0;     // Góc 0 = Mở khóa
+    targetLocker.status = 'EMERGENCY';
+
+    lcd_preview = {
+      line1: '🚨 CANH BAO ADMIN 🚨',
+      line2: `MO KHAN CAP TU ${locker_id}`,
+      line3: 'Yeu cau admin khoi',
+      line4: 'phuc lai sau khi xong'
+    };
+
+    console.log(`🚨 [ADMIN EMERGENCY] Đã kích hoạt mở khẩn cấp Ô Tủ #${locker_id}`);
+
+  } else {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Vui lòng truyền locker_id hoặc unlockAll: true' 
+    });
+  }
+
+  return res.json({
+    success: true,
+    message: '⚡ Lệnh mở khóa khẩn cấp đã được phát!',
+    lockers,
+    lcd_preview
+  });
+});
