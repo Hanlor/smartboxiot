@@ -1,6 +1,11 @@
 /**
  * Locker business logic and edge-case handling for the 3-compartment Smart Box.
+ * File: controllers/lockerController.js
  */
+
+// ---------------------------------------------------------------------------
+// Context helpers
+// ---------------------------------------------------------------------------
 
 function getCtx(req) {
   return {
@@ -9,6 +14,10 @@ function getCtx(req) {
     constants: req.app.locals.constants,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Validation helpers
+// ---------------------------------------------------------------------------
 
 function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0;
@@ -36,9 +45,10 @@ function lockoutResponse(res, lockedUntil) {
   });
 }
 
-/**
- * GET /api/v1/lockers
- */
+// ---------------------------------------------------------------------------
+// GET /api/v1/lockers
+// ---------------------------------------------------------------------------
+
 function getLockers(req, res) {
   const { db, helpers } = getCtx(req);
   helpers.expireReservedLockers();
@@ -52,10 +62,11 @@ function getLockers(req, res) {
   });
 }
 
-/**
- * POST /api/v1/shipments/create
- * Reserve an AVAILABLE locker and issue a QR token for deposit.
- */
+// ---------------------------------------------------------------------------
+// POST /api/v1/shipments/create
+// Reserve an AVAILABLE locker and issue a QR token for deposit.
+// ---------------------------------------------------------------------------
+
 function createShipment(req, res) {
   const { db, helpers, constants } = getCtx(req);
   const { sender_phone, recipient_phone, locker_id } = req.body || {};
@@ -110,6 +121,17 @@ function createShipment(req, res) {
     });
   }
 
+  // ── Chuẩn hóa SĐT về dạng quốc tế +84... ──
+  const senderIntl = helpers.normalizePhoneVN(sender_phone);
+  const recipientIntl = helpers.normalizePhoneVN(recipient_phone);
+
+  if (!senderIntl || !recipientIntl) {
+    return res.status(400).json({
+      success: false,
+      message: 'SĐT không hợp lệ. Vui lòng dùng định dạng 0xxxxxxxxx hoặc +84xxxxxxxxx',
+    });
+  }
+
   const shipment_id = helpers.generateShipmentId();
   const qr_token = helpers.generateQrToken();
   const now = Date.now();
@@ -117,21 +139,25 @@ function createShipment(req, res) {
   const shipment = {
     shipment_id,
     locker_id: lockerId,
-    sender_phone: sender_phone.trim(),
-    recipient_phone: recipient_phone.trim(),
+    sender_phone: senderIntl,
+    recipient_phone: recipientIntl,
     qr_token,
     created_at: now,
     occupied_at: null,
     completed_at: null,
+    aborted_at: null,
+    expired_at: null,
+    status: 'PENDING',
   };
 
   db.shipments.set(shipment_id, shipment);
 
   locker.shipment_id = shipment_id;
-  locker.sender_phone = shipment.sender_phone;
-  locker.recipient_phone = shipment.recipient_phone;
+  locker.sender_phone = senderIntl;
+  locker.recipient_phone = recipientIntl;
   locker.qr_token = qr_token;
   locker.reserved_at = now;
+
   helpers.applyStatus(locker, constants.LOCKER_STATUS.RESERVED);
   helpers.persistState();
 
@@ -139,14 +165,17 @@ function createShipment(req, res) {
     success: true,
     shipment_id,
     qr_token,
+    sender_phone: senderIntl,
+    recipient_phone: recipientIntl,
     message: 'Ô đã được giữ chỗ',
   });
 }
 
-/**
- * POST /api/v1/shipments/open-deposit
- * Validate QR token and unlock servo for deposit.
- */
+// ---------------------------------------------------------------------------
+// POST /api/v1/shipments/open-deposit
+// Validate QR token and unlock servo for deposit.
+// ---------------------------------------------------------------------------
+
 function openDeposit(req, res) {
   const { db, helpers, constants } = getCtx(req);
   const { locker_id, qr_token } = req.body || {};
@@ -195,11 +224,12 @@ function openDeposit(req, res) {
   });
 }
 
-/**
- * POST /api/v1/shipments/verify-otp
- * Validate recipient OTP (6-digit, 5-minute TTL) and unlock for pickup.
- * 5 failed attempts per phone invalidate the OTP and lock out for 15 minutes (429).
- */
+// ---------------------------------------------------------------------------
+// POST /api/v1/shipments/verify-otp
+// Validate recipient OTP (6-digit, 5-minute TTL) and unlock for pickup.
+// 5 failed attempts per phone -> lockout 15 minutes (HTTP 429).
+// ---------------------------------------------------------------------------
+
 function verifyOtp(req, res) {
   const { db, helpers, constants } = getCtx(req);
   const { recipient_phone, otp_code } = req.body || {};
@@ -213,9 +243,18 @@ function verifyOtp(req, res) {
 
   helpers.purgeExpiredOtps();
 
-  const phone = recipient_phone.trim();
+  // ── Chuẩn hóa SĐT về dạng quốc tế +84... ──
+  const phone = helpers.normalizePhoneVN(recipient_phone);
   const code = otp_code.trim();
   const now = Date.now();
+
+  if (!phone) {
+    return res.status(400).json({
+      success: false,
+      message: 'SĐT không hợp lệ',
+    });
+  }
+
   const security = helpers.getOtpSecurity(phone);
 
   if (security.locked_until && security.locked_until > now) {
@@ -230,9 +269,9 @@ function verifyOtp(req, res) {
   const otpRecord = db.otps.get(code);
   const otpValid = Boolean(
     otpRecord
-    && !otpRecord.used
-    && otpRecord.recipient_phone === phone
-    && otpRecord.expires_at > now
+      && !otpRecord.used
+      && otpRecord.recipient_phone === phone
+      && otpRecord.expires_at > now
   );
 
   if (!otpValid) {
@@ -282,6 +321,7 @@ function verifyOtp(req, res) {
   db.otps.delete(code);
   security.failed_attempts = 0;
   security.locked_until = 0;
+
   helpers.applyStatus(locker, constants.LOCKER_STATUS.PICKING);
   helpers.persistState();
 
@@ -292,10 +332,74 @@ function verifyOtp(req, res) {
   });
 }
 
-/**
- * POST /api/v1/telemetry/update
- * Hardware loop: apply double-check rules for OCCUPIED, abort, and AVAILABLE.
- */
+// ---------------------------------------------------------------------------
+// POST /api/v1/shipments/resend-otp
+// Re-issue OTP for an OCCUPIED locker (use when first SMS failed).
+// ---------------------------------------------------------------------------
+
+async function resendOtp(req, res) {
+  const { db, helpers, constants } = getCtx(req);
+  const { locker_id } = req.body || {};
+
+  const lockerId = parseLockerId(locker_id);
+  if (!lockerId) {
+    return res.status(400).json({
+      success: false,
+      message: 'locker_id must be 1, 2, or 3',
+    });
+  }
+
+  const locker = db.lockers.get(lockerId);
+
+  if (locker.status !== constants.LOCKER_STATUS.OCCUPIED) {
+    return res.status(400).json({
+      success: false,
+      message: 'Chỉ gửi lại OTP khi tủ đang OCCUPIED',
+      current_status: locker.status,
+    });
+  }
+
+  if (!locker.recipient_phone) {
+    return res.status(400).json({
+      success: false,
+      message: 'Tủ chưa có thông tin người nhận',
+    });
+  }
+
+  // Xóa OTP cũ của SĐT này (nếu còn)
+  helpers.invalidateOtpsForPhone(locker.recipient_phone);
+
+  const otp = helpers.generateOtpCode();
+  db.otps.set(otp, {
+    otp_code: otp,
+    locker_id: locker.locker_id,
+    shipment_id: locker.shipment_id,
+    recipient_phone: locker.recipient_phone,
+    expires_at: Date.now() + constants.OTP_TTL_MS,
+    used: false,
+  });
+
+  // Reset lockout khi gửi lại OTP
+  const security = helpers.getOtpSecurity(locker.recipient_phone);
+  security.failed_attempts = 0;
+  security.locked_until = 0;
+
+  const smsResult = await helpers.sendSMSViaAndroid(locker.recipient_phone, otp);
+  helpers.persistState();
+
+  return res.status(200).json({
+    success: true,
+    message: smsResult.sent ? 'Đã gửi lại OTP' : 'Không gửi được SMS, vui lòng thử lại',
+    otp_sent: smsResult.sent,
+    otp_send_error: smsResult.sent ? null : smsResult.error,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/telemetry/update
+// Hardware loop: apply double-check rules for OCCUPIED, abort, and AVAILABLE.
+// ---------------------------------------------------------------------------
+
 async function updateTelemetry(req, res) {
   const { db, helpers, constants } = getCtx(req);
   const { locker_id } = req.body || {};
@@ -322,14 +426,16 @@ async function updateTelemetry(req, res) {
 
   const locker = db.lockers.get(lockerId);
 
-  // --- THÊM ĐOẠN NÀY: Xử lý đóng tủ sau khi Admin Mở khẩn cấp ---
+  // ── Xử lý đóng tủ sau khi Admin Mở khẩn cấp ──
   if (locker.status === 'EMERGENCY') {
     locker.door_closed = door.value;
     locker.has_item = item.value;
 
     if (locker.door_closed) {
-      // Khi Admin đóng cửa tủ lại -> Khóa Servo lại (góc 90) và trả về trạng thái hoạt động
-      const newStatus = locker.has_item ? constants.LOCKER_STATUS.OCCUPIED : constants.LOCKER_STATUS.AVAILABLE;
+      const newStatus = locker.has_item
+        ? constants.LOCKER_STATUS.OCCUPIED
+        : constants.LOCKER_STATUS.AVAILABLE;
+
       helpers.applyStatus(locker, newStatus);
       helpers.persistState();
 
@@ -342,13 +448,12 @@ async function updateTelemetry(req, res) {
       led_color: locker.led_color,
     });
   }
-  // -------------------------------------------------------------
 
   locker.door_closed = door.value;
   locker.has_item = item.value;
   const { LOCKER_STATUS: S } = constants;
 
-  // Double-check: DEPOSITING -> OCCUPIED only if door closed AND item present.
+  // ── DEPOSITING -> OCCUPIED (đóng cửa + có hàng) ──
   if (locker.status === S.DEPOSITING && locker.door_closed && locker.has_item) {
     helpers.applyStatus(locker, S.OCCUPIED);
 
@@ -363,14 +468,20 @@ async function updateTelemetry(req, res) {
     });
 
     if (locker.shipment_id && db.shipments.has(locker.shipment_id)) {
-      db.shipments.get(locker.shipment_id).occupied_at = Date.now();
+      const shipment = db.shipments.get(locker.shipment_id);
+      shipment.occupied_at = Date.now();
+      shipment.status = 'OCCUPIED';
     }
+
+    let smsResult = { sent: false, error: 'no recipient phone' };
 
     if (locker.recipient_phone) {
       const security = helpers.getOtpSecurity(locker.recipient_phone);
       security.failed_attempts = 0;
       security.locked_until = 0;
-      helpers.sendSMSViaAndroid(locker.recipient_phone, otp);
+
+      // ✅ await để biết SMS thật sự gửi được hay không
+      smsResult = await helpers.sendSMSViaAndroid(locker.recipient_phone, otp);
     }
 
     helpers.persistState();
@@ -379,12 +490,14 @@ async function updateTelemetry(req, res) {
       success: true,
       current_status: locker.status,
       led_color: locker.led_color,
+      otp_sent: smsResult.sent,
+      otp_send_error: smsResult.sent ? null : smsResult.error,
     });
   }
 
-  // Deposit abort: user closed an empty locker during DEPOSITING.
+  // ── Deposit abort: đóng tủ rỗng khi DEPOSITING ──
   if (locker.status === S.DEPOSITING && locker.door_closed && !locker.has_item) {
-    console.log('Deposit aborted by user');
+    console.log(`[DEPOSIT ABORTED] Locker #${lockerId}`);
 
     if (locker.shipment_id && db.shipments.has(locker.shipment_id)) {
       const shipment = db.shipments.get(locker.shipment_id);
@@ -403,10 +516,12 @@ async function updateTelemetry(req, res) {
     });
   }
 
-  // Double-check: PICKING -> AVAILABLE only if door closed AND no item.
+  // ── PICKING -> AVAILABLE (đóng cửa + hết hàng) ──
   if (locker.status === S.PICKING && locker.door_closed && !locker.has_item) {
     if (locker.shipment_id && db.shipments.has(locker.shipment_id)) {
-      db.shipments.get(locker.shipment_id).completed_at = Date.now();
+      const shipment = db.shipments.get(locker.shipment_id);
+      shipment.completed_at = Date.now();
+      shipment.status = 'COMPLETED';
     }
 
     for (const [key, record] of db.otps.entries()) {
@@ -426,7 +541,7 @@ async function updateTelemetry(req, res) {
     });
   }
 
-  // AVAILABLE locker reporting a sealed item is treated as a sensor/hardware fault.
+  // ── AVAILABLE + đóng cửa + có hàng => lỗi cảm biến ──
   if (locker.status === S.AVAILABLE && locker.door_closed && locker.has_item) {
     helpers.applyStatus(locker, S.MAINTENANCE);
     helpers.persistState();
@@ -441,67 +556,16 @@ async function updateTelemetry(req, res) {
   });
 }
 
-module.exports = {
-  getLockers,
-  createShipment,
-  openDeposit,
-  verifyOtp,
-  updateTelemetry,
-  emergencyUnlock, // <-- BẮT BUỘC Phải có dòng này!
-};
-// Dán hàm này trực tiếp vào controllers/lockerController.js
-// 1. Kiểm tra lại IP trên màn hình App điện thoại (Tab HOME) để lấy đúng IP
-// Nếu trên App ghi 192.168.1.5 thì điền đúng 192.168.1.5
-const SMS_GATEWAY_URL = 'http://192.168.1.5:8080/message'; // Dùng /message thay vì /send-sms
-const USERNAME = 'sms';
-const PASSWORD = 'o4uAdpeJ';
+// ---------------------------------------------------------------------------
+// POST /api/v1/admin/emergency-unlock
+// Admin mở khóa khẩn cấp 1 ô hoặc toàn bộ ô tủ.
+// ---------------------------------------------------------------------------
 
-async function sendOTP_SMS(recipientPhone, otpCode) {
-  const authHeader = 'Basic ' + Buffer.from(`${USERNAME}:${PASSWORD}`).toString('base64');
-
-  // Khai báo Controller để tăng timeout lên 10 giây (10000ms)
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000); 
-
-  try {
-    const response = await fetch(SMS_GATEWAY_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        phoneNumbers: [recipientPhone],
-        textMessage: {
-          text: `[SMART BOX] Ma OTP nhan hang cua ban la: ${otpCode}. Ma co hieu luc trong 5 phut.`
-        }
-      })
-    });
-    clearTimeout(timeoutId);
-
-    if (response.ok) {
-      console.log(`📱 [SMS SUCCESS] Đã gửi OTP (${otpCode}) tới SĐT: ${recipientPhone}`);
-    } else {
-      console.error(`❌ [SMS ERROR] HTTP Status: ${response.status}`);
-    }
-  } catch (error) {
-    if (error.name === 'AbortError') {
-      console.error('❌ [SMS ERROR] Lỗi Timeout 10s: Điện thoại không phản hồi!');
-    } else {
-      console.error('❌ [SMS ERROR] Không thể kết nối điện thoại:', error.message);
-    }
-  }
-}
-/**
- * POST /api/v1/admin/emergency-unlock
- * Admin Mở khóa khẩn cấp 1 hoặc toàn bộ các ô tủ.
- */
 function emergencyUnlock(req, res) {
   const { db, helpers } = getCtx(req);
   const { adminKey, locker_id, unlockAll } = req.body || {};
 
-  // 1. Kiểm tra Mật khẩu Admin Khẩn cấp (mặc định 'admin@smartbox123' hoặc cấu hình qua .env)
+  // 1. Kiểm tra mật khẩu Admin
   const ADMIN_SECRET = process.env.ADMIN_SECRET_KEY || 'admin@smartbox123';
   if (adminKey !== ADMIN_SECRET) {
     return res.status(403).json({
@@ -511,18 +575,16 @@ function emergencyUnlock(req, res) {
   }
 
   // 2. Xử lý mở tủ khẩn cấp
-  if (unlockAll) {
-    // Chế độ: Mở TOÀN BỘ 3 ô tủ
+  if (unlockAll === true) {
     for (const locker of db.lockers.values()) {
-      locker.servo_angle = 0; // Xoay Servo về góc 0 độ để mở chốt
+      locker.servo_angle = 0;
       locker.status = 'EMERGENCY';
       locker.led_color = 'RED';
       locker.led_blink = true;
     }
-    console.log('🚨 [ADMIN EMERGENCY] ĐÃ KÍCH HOẠT MỞ KHẨN CẤP TOÀN BỘ TỦ!');
+    console.log('🚨 [ADMIN EMERGENCY] ĐÃ KÍCH HOẠT MỞ KHẨN CẤP TOÀN BỘ 3 Ô TỦ!');
 
-  } else if (locker_id) {
-    // Chế độ: Mở 1 ô tủ chỉ định
+  } else if (locker_id !== undefined && locker_id !== null) {
     const lockerId = parseLockerId(locker_id);
     if (!lockerId) {
       return res.status(400).json({
@@ -532,7 +594,14 @@ function emergencyUnlock(req, res) {
     }
 
     const locker = db.lockers.get(lockerId);
-    locker.servo_angle = 0; // Xoay Servo về góc 0 độ để mở chốt
+    if (!locker) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy tủ',
+      });
+    }
+
+    locker.servo_angle = 0;
     locker.status = 'EMERGENCY';
     locker.led_color = 'RED';
     locker.led_blink = true;
@@ -546,7 +615,6 @@ function emergencyUnlock(req, res) {
     });
   }
 
-  // Lưu trạng thái ngay lập tức vào database/file state
   helpers.persistState();
 
   const lockersList = [1, 2, 3].map((id) => helpers.publicLockerView(db.lockers.get(id)));
@@ -558,3 +626,17 @@ function emergencyUnlock(req, res) {
     lcd_preview: helpers.generateLcdPreview(),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Exports
+// ---------------------------------------------------------------------------
+
+module.exports = {
+  getLockers,
+  createShipment,
+  openDeposit,
+  verifyOtp,
+  resendOtp,
+  updateTelemetry,
+  emergencyUnlock,
+};

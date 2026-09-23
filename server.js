@@ -188,6 +188,34 @@ function generateShipmentId() {
   } while (db.shipments.has(id));
   return id;
 }
+/**
+ * Chuẩn hóa SĐT Việt Nam về dạng quốc tế +84.
+ * - "0769259051"   -> "+84769259051"
+ * - "84769259051"   -> "+84769259051"
+ * - "+84769259051"  -> "+84769259051"
+ * - "0769 259 051"  -> "+84769259051"
+ * Trả về null nếu không hợp lệ.
+ */
+function normalizePhoneVN(phone) {
+  if (typeof phone !== 'string') return null;
+  const digits = phone.replace(/\D/g, ''); // bỏ mọi ký tự không phải số
+
+  if (digits.length < 9 || digits.length > 12) return null;
+
+  // Đã có mã quốc tế 84
+  if (digits.startsWith('84') && digits.length >= 11) {
+    return '+' + digits;
+  }
+  // SĐT nội địa bắt đầu bằng 0
+  if (digits.startsWith('0') && digits.length === 10) {
+    return '+84' + digits.slice(1);
+  }
+  // Trường hợp đã là số mobile 9-10 chữ không có 0 đầu (hiếm)
+  if (digits.length === 9) {
+    return '+84' + digits;
+  }
+  return null;
+}
 
 function publicLockerView(locker) {
   const view = {
@@ -206,36 +234,41 @@ function publicLockerView(locker) {
   return view;
 }
 
+/**
+ * Gửi OTP qua SMS Gateway (Cloud hoặc Local đều dùng chung env).
+ * Env: SMS_GATEWAY_URL, SMS_GATEWAY_USER, SMS_GATEWAY_PASS
+ */
 async function sendSMSViaAndroid(phone, otp) {
-  const SMS_GATEWAY_URL = process.env.SMS_GATEWAY_URL || 'https://api.sms-gate.app/3rdparty/v1/messages';
-  const USERNAME = process.env.SMS_GATEWAY_USER || '-B-12Y';
-  const PASSWORD = process.env.SMS_GATEWAY_PASS || 'xme1yle6eczm2t';
+  const url      = process.env.SMS_GATEWAY_URL  || 'https://api.sms-gate.app/3rdparty/v1/messages';
+  const username = process.env.SMS_GATEWAY_USER || '-B-12Y';
+  const password = process.env.SMS_GATEWAY_PASS || 'xme1yle6eczm2t';
+  const authHeader = 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64');
 
-  const authHeader = 'Basic ' + Buffer.from(`${USERNAME}:${PASSWORD}`).toString('base64');
-
+  // phone PHẢI đã ở dạng +84... (đã normalize ở tầng controller)
   const payload = {
     phoneNumbers: [phone],
     textMessage: {
       text: `SmartBox: Ma OTP mo tu o cua ban la ${otp}. Ma co hieu luc trong 5 phut.`,
-    }
+    },
   };
 
   try {
-    const response = await axios.post(SMS_GATEWAY_URL, payload, {
+    const response = await axios.post(url, payload, {
       timeout: 10000,
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'Authorization': authHeader
+        'Authorization': authHeader,
       },
     });
 
-    console.log(`📱 [SMS CLOUD SUCCESS] Đã gửi mã OTP (${otp}) tới SĐT: ${phone}`);
+    console.log(`📱 [SMS SUCCESS] OTP=${otp} -> ${phone} (HTTP ${response.status})`);
     return { sent: true, status: response.status };
   } catch (error) {
     const detail = error.response
       ? `HTTP ${error.response.status} - ${JSON.stringify(error.response.data)}`
       : error.message;
-    console.error(`[SMS] Failed to send OTP to ${phone}: ${detail}`);
+
+    console.error(`❌ [SMS FAILED] ${phone}: ${detail}`);
     return { sent: false, error: detail };
   }
 }
@@ -258,20 +291,8 @@ function serializeState() {
 function saveStateToFile() {
   try {
     fs.writeFileSync(STATE_FILE, JSON.stringify(serializeState(), null, 2), 'utf8');
-
-    for (const [id, locker] of db.lockers.entries()) {
-      sqliteDb.run(
-        `INSERT INTO lockers (id, status, door_closed, has_item) 
-         VALUES (?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET 
-           status = excluded.status,
-           door_closed = excluded.door_closed,
-           has_item = excluded.has_item`,
-        [id, locker.status, locker.door_closed ? 1 : 0, locker.has_item ? 1 : 0]
-      );
-    }
   } catch (error) {
-    console.error('[STATE] Failed to write state/database:', error.message);
+    console.error('[STATE] Failed to write state.json:', error.message);
   }
 }
 
@@ -471,6 +492,7 @@ app.locals.helpers = {
   getOtpSecurity,
   invalidateOtpsForPhone,
   padLcdLine,
+  normalizePhoneVN, 
 };
 
 app.get('/health', (_req, res) => {
