@@ -5,9 +5,11 @@ const router = express.Router();
 
 router.get('/lockers', lockerController.getLockers);
 router.post('/shipments/create', lockerController.createShipment);
+router.post('/shipments/verify-sender', lockerController.verifySender);        // <-- MỚI
+router.post('/shipments/resend-sender-otp', lockerController.resendSenderOtp); // <-- MỚI
 router.post('/shipments/open-deposit', lockerController.openDeposit);
 router.post('/shipments/verify-otp', lockerController.verifyOtp);
-router.post('/shipments/resend-otp', lockerController.resendOtp);   // <-- MỚI
+router.post('/shipments/resend-otp', lockerController.resendOtp);
 router.post('/telemetry/update', lockerController.updateTelemetry);
 router.post('/admin/emergency-unlock', lockerController.emergencyUnlock);
 

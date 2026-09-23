@@ -37,6 +37,7 @@ const STATE_FILE = path.join(__dirname, 'state.json');
 
 const LOCKER_STATUS = Object.freeze({
   AVAILABLE: 'AVAILABLE',
+  PENDING_SENDER: 'PENDING_SENDER',
   RESERVED: 'RESERVED',
   DEPOSITING: 'DEPOSITING',
   OCCUPIED: 'OCCUPIED',
@@ -46,6 +47,7 @@ const LOCKER_STATUS = Object.freeze({
 
 const LCD_STATUS_VI = Object.freeze({
   AVAILABLE: 'TRONG',
+  PENDING_SENDER: 'XAC THUC', 
   RESERVED: 'GIU CHO',
   DEPOSITING: 'DANG GUI',
   OCCUPIED: 'CO HANG',
@@ -108,6 +110,7 @@ function ledForStatus(status) {
   switch (status) {
     case LOCKER_STATUS.AVAILABLE:
       return { led_color: 'GREEN', led_blink: false };
+    case LOCKER_STATUS.PENDING_SENDER:   // <-- THÊM
     case LOCKER_STATUS.RESERVED:
       return { led_color: 'YELLOW', led_blink: true };
     case LOCKER_STATUS.DEPOSITING:
@@ -422,7 +425,9 @@ function expireReservedLockers(now = Date.now()) {
   let changed = false;
 
   for (const locker of db.lockers.values()) {
-    if (locker.status !== LOCKER_STATUS.RESERVED) continue;
+    // <-- SỬA: thêm PENDING_SENDER
+    if (locker.status !== LOCKER_STATUS.RESERVED
+        && locker.status !== LOCKER_STATUS.PENDING_SENDER) continue;
 
     const reservedAt = locker.reserved_at
       || (locker.shipment_id && db.shipments.get(locker.shipment_id)?.created_at)
@@ -431,7 +436,7 @@ function expireReservedLockers(now = Date.now()) {
     if (!reservedAt || now - reservedAt < RESERVATION_TTL_MS) continue;
 
     console.log(
-      `[RESERVATION] Locker ${locker.locker_id} reservation expired after 10 minutes`
+      `[RESERVATION] Locker ${locker.locker_id} (${locker.status}) expired after 10 minutes`
     );
 
     if (locker.shipment_id && db.shipments.has(locker.shipment_id)) {
