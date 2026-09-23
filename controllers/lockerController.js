@@ -25,11 +25,24 @@ function parseBoolean(value, field) {
   return { ok: false, message: `${field} must be a boolean` };
 }
 
+function lockoutResponse(res, lockedUntil) {
+  const retryAfterSec = Math.max(1, Math.ceil((lockedUntil - Date.now()) / 1000));
+  res.set('Retry-After', String(retryAfterSec));
+  return res.status(429).json({
+    success: false,
+    message: 'Too many failed OTP attempts. Recipient is locked out for 15 minutes.',
+    locked_until: lockedUntil,
+    retry_after_seconds: retryAfterSec,
+  });
+}
+
 /**
  * GET /api/v1/lockers
  */
 function getLockers(req, res) {
   const { db, helpers } = getCtx(req);
+  helpers.expireReservedLockers();
+
   const lockers = [1, 2, 3].map((id) => helpers.publicLockerView(db.lockers.get(id)));
 
   return res.status(200).json({
@@ -46,6 +59,8 @@ function getLockers(req, res) {
 function createShipment(req, res) {
   const { db, helpers, constants } = getCtx(req);
   const { sender_phone, recipient_phone, locker_id } = req.body || {};
+
+  helpers.expireReservedLockers();
 
   if (!isNonEmptyString(sender_phone) || !isNonEmptyString(recipient_phone)) {
     return res.status(400).json({
@@ -88,6 +103,7 @@ function createShipment(req, res) {
 
   if (locker.has_item) {
     helpers.applyStatus(locker, constants.LOCKER_STATUS.MAINTENANCE);
+    helpers.persistState();
     return res.status(400).json({
       success: false,
       message: 'Sensor reports an item in an AVAILABLE locker; locker set to MAINTENANCE',
@@ -96,6 +112,7 @@ function createShipment(req, res) {
 
   const shipment_id = helpers.generateShipmentId();
   const qr_token = helpers.generateQrToken();
+  const now = Date.now();
 
   const shipment = {
     shipment_id,
@@ -103,7 +120,7 @@ function createShipment(req, res) {
     sender_phone: sender_phone.trim(),
     recipient_phone: recipient_phone.trim(),
     qr_token,
-    created_at: Date.now(),
+    created_at: now,
     occupied_at: null,
     completed_at: null,
   };
@@ -114,7 +131,9 @@ function createShipment(req, res) {
   locker.sender_phone = shipment.sender_phone;
   locker.recipient_phone = shipment.recipient_phone;
   locker.qr_token = qr_token;
+  locker.reserved_at = now;
   helpers.applyStatus(locker, constants.LOCKER_STATUS.RESERVED);
+  helpers.persistState();
 
   return res.status(200).json({
     success: true,
@@ -131,6 +150,8 @@ function createShipment(req, res) {
 function openDeposit(req, res) {
   const { db, helpers, constants } = getCtx(req);
   const { locker_id, qr_token } = req.body || {};
+
+  helpers.expireReservedLockers();
 
   const lockerId = parseLockerId(locker_id);
   if (!lockerId) {
@@ -165,6 +186,7 @@ function openDeposit(req, res) {
   }
 
   helpers.applyStatus(locker, constants.LOCKER_STATUS.DEPOSITING);
+  helpers.persistState();
 
   return res.status(200).json({
     success: true,
@@ -176,6 +198,7 @@ function openDeposit(req, res) {
 /**
  * POST /api/v1/shipments/verify-otp
  * Validate recipient OTP (6-digit, 5-minute TTL) and unlock for pickup.
+ * 5 failed attempts per phone invalidate the OTP and lock out for 15 minutes (429).
  */
 function verifyOtp(req, res) {
   const { db, helpers, constants } = getCtx(req);
@@ -192,20 +215,57 @@ function verifyOtp(req, res) {
 
   const phone = recipient_phone.trim();
   const code = otp_code.trim();
-  const otpRecord = db.otps.get(code);
+  const now = Date.now();
+  const security = helpers.getOtpSecurity(phone);
 
-  if (!otpRecord || otpRecord.used || otpRecord.recipient_phone !== phone) {
+  if (security.locked_until && security.locked_until > now) {
+    return lockoutResponse(res, security.locked_until);
+  }
+
+  if (security.locked_until && security.locked_until <= now) {
+    security.locked_until = 0;
+    security.failed_attempts = 0;
+  }
+
+  const otpRecord = db.otps.get(code);
+  const otpValid = Boolean(
+    otpRecord
+    && !otpRecord.used
+    && otpRecord.recipient_phone === phone
+    && otpRecord.expires_at > now
+  );
+
+  if (!otpValid) {
+    security.failed_attempts += 1;
+
+    if (security.failed_attempts >= constants.OTP_MAX_FAILURES) {
+      helpers.invalidateOtpsForPhone(phone);
+      security.failed_attempts = constants.OTP_MAX_FAILURES;
+      security.locked_until = now + constants.OTP_LOCKOUT_MS;
+      helpers.persistState();
+      return lockoutResponse(res, security.locked_until);
+    }
+
+    helpers.persistState();
+
+    const expired = otpRecord
+      && otpRecord.recipient_phone === phone
+      && otpRecord.expires_at <= now;
+
+    if (expired) {
+      db.otps.delete(code);
+      helpers.persistState();
+      return res.status(404).json({
+        success: false,
+        message: 'OTP expired',
+        remaining_attempts: constants.OTP_MAX_FAILURES - security.failed_attempts,
+      });
+    }
+
     return res.status(404).json({
       success: false,
       message: 'OTP not found',
-    });
-  }
-
-  if (otpRecord.expires_at <= Date.now()) {
-    db.otps.delete(code);
-    return res.status(404).json({
-      success: false,
-      message: 'OTP expired',
+      remaining_attempts: constants.OTP_MAX_FAILURES - security.failed_attempts,
     });
   }
 
@@ -220,7 +280,10 @@ function verifyOtp(req, res) {
 
   otpRecord.used = true;
   db.otps.delete(code);
+  security.failed_attempts = 0;
+  security.locked_until = 0;
   helpers.applyStatus(locker, constants.LOCKER_STATUS.PICKING);
+  helpers.persistState();
 
   return res.status(200).json({
     success: true,
@@ -229,20 +292,15 @@ function verifyOtp(req, res) {
   });
 }
 
-function clearLockerShipment(locker) {
-  locker.shipment_id = null;
-  locker.sender_phone = null;
-  locker.recipient_phone = null;
-  locker.qr_token = null;
-}
-
 /**
  * POST /api/v1/telemetry/update
- * Hardware loop: apply double-check rules for OCCUPIED and AVAILABLE.
+ * Hardware loop: apply double-check rules for OCCUPIED, abort, and AVAILABLE.
  */
 async function updateTelemetry(req, res) {
   const { db, helpers, constants } = getCtx(req);
   const { locker_id } = req.body || {};
+
+  helpers.expireReservedLockers();
 
   const lockerId = parseLockerId(locker_id);
   if (!lockerId) {
@@ -286,10 +344,35 @@ async function updateTelemetry(req, res) {
       db.shipments.get(locker.shipment_id).occupied_at = Date.now();
     }
 
-    // Do not block the hardware telemetry loop on the Android SMS gateway.
     if (locker.recipient_phone) {
+      const security = helpers.getOtpSecurity(locker.recipient_phone);
+      security.failed_attempts = 0;
+      security.locked_until = 0;
       helpers.sendSMSViaAndroid(locker.recipient_phone, otp);
     }
+
+    helpers.persistState();
+
+    return res.status(200).json({
+      success: true,
+      current_status: locker.status,
+      led_color: locker.led_color,
+    });
+  }
+
+  // Deposit abort: user closed an empty locker during DEPOSITING.
+  if (locker.status === S.DEPOSITING && locker.door_closed && !locker.has_item) {
+    console.log('Deposit aborted by user');
+
+    if (locker.shipment_id && db.shipments.has(locker.shipment_id)) {
+      const shipment = db.shipments.get(locker.shipment_id);
+      shipment.aborted_at = Date.now();
+      shipment.status = 'ABORTED';
+    }
+
+    helpers.clearLockerShipment(locker);
+    helpers.applyStatus(locker, S.AVAILABLE);
+    helpers.persistState();
 
     return res.status(200).json({
       success: true,
@@ -310,8 +393,9 @@ async function updateTelemetry(req, res) {
       }
     }
 
-    clearLockerShipment(locker);
+    helpers.clearLockerShipment(locker);
     helpers.applyStatus(locker, S.AVAILABLE);
+    helpers.persistState();
 
     return res.status(200).json({
       success: true,
@@ -323,6 +407,9 @@ async function updateTelemetry(req, res) {
   // AVAILABLE locker reporting a sealed item is treated as a sensor/hardware fault.
   if (locker.status === S.AVAILABLE && locker.door_closed && locker.has_item) {
     helpers.applyStatus(locker, S.MAINTENANCE);
+    helpers.persistState();
+  } else {
+    helpers.persistState();
   }
 
   return res.status(200).json({
@@ -339,3 +426,47 @@ module.exports = {
   verifyOtp,
   updateTelemetry,
 };
+// Dán hàm này trực tiếp vào controllers/lockerController.js
+// 1. Kiểm tra lại IP trên màn hình App điện thoại (Tab HOME) để lấy đúng IP
+// Nếu trên App ghi 192.168.1.5 thì điền đúng 192.168.1.5
+const SMS_GATEWAY_URL = 'http://192.168.1.5:8080/message'; // Dùng /message thay vì /send-sms
+const USERNAME = 'sms';
+const PASSWORD = 'o4uAdpeJ';
+
+async function sendOTP_SMS(recipientPhone, otpCode) {
+  const authHeader = 'Basic ' + Buffer.from(`${USERNAME}:${PASSWORD}`).toString('base64');
+
+  // Khai báo Controller để tăng timeout lên 10 giây (10000ms)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); 
+
+  try {
+    const response = await fetch(SMS_GATEWAY_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        phoneNumbers: [recipientPhone],
+        textMessage: {
+          text: `[SMART BOX] Ma OTP nhan hang cua ban la: ${otpCode}. Ma co hieu luc trong 5 phut.`
+        }
+      })
+    });
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      console.log(`📱 [SMS SUCCESS] Đã gửi OTP (${otpCode}) tới SĐT: ${recipientPhone}`);
+    } else {
+      console.error(`❌ [SMS ERROR] HTTP Status: ${response.status}`);
+    }
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      console.error('❌ [SMS ERROR] Lỗi Timeout 10s: Điện thoại không phản hồi!');
+    } else {
+      console.error('❌ [SMS ERROR] Không thể kết nối điện thoại:', error.message);
+    }
+  }
+}
