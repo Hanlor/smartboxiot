@@ -2,376 +2,262 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Box - Commercial IoT Kiosk & Dashboard</title>
-  <!-- Tailwind CSS CDN -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#6366F1">
+  <title>Smart Box — Tủ gửi đồ thông minh</title>
+
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Font: Inter & JetBrains Mono for LCD -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <!-- Lucide Icons -->
+
+  <!-- Font Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+  <!-- Icons Lucide -->
   <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50:  '#EEF2FF',
+              100: '#E0E7FF',
+              500: '#6366F1',
+              600: '#4F46E5',
+              700: '#4338CA',
+            }
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.5s ease-out',
+            'slide-up': 'slideUp 0.4s ease-out',
+            'pulse-slow': 'pulse 2s ease-in-out infinite',
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' },
+            },
+            slideUp: {
+              '0%': { opacity: '0', transform: 'translateY(20px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+
   <style>
-    body { font-family: 'Inter', sans-serif; }
-    .font-lcd { font-family: 'JetBrains Mono', monospace; }
-    .glass-card {
-      background: rgba(255, 255, 255, 0.85);
+    body {
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior-y: contain;
+    }
+    .glass {
       backdrop-filter: blur(12px);
-      border: 1px solid rgba(229, 231, 235, 0.8);
+      background: rgba(255, 255, 255, 0.7);
     }
   </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen pb-10">
 
-  <!-- TOP BAR / HEADER -->
-  <header class="border-b border-slate-800 bg-slate-950/60 sticky top-0 z-50 backdrop-blur-md">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
-          <i data-lucide="box" class="w-6 h-6"></i>
+<body class="font-sans bg-gradient-to-b from-slate-50 via-white to-slate-50 min-h-screen antialiased">
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- HEADER                                       -->
+  <!-- ═══════════════════════════════════════════ -->
+  <header class="sticky top-0 z-50 glass border-b border-slate-200/60">
+    <div class="max-w-md mx-auto px-5 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-md shadow-brand-500/30">
+          <i data-lucide="package" class="w-4.5 h-4.5 text-white" style="width:18px;height:18px;"></i>
         </div>
         <div>
-          <h1 class="font-bold text-lg leading-none tracking-tight text-white">SMART BOX <span class="text-xs px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400 font-mono">v1.0 Pro</span></h1>
-          <p class="text-xs text-slate-400 mt-0.5">Hệ thống tủ gửi hàng thông minh 3 ngăn</p>
+          <div class="font-bold text-slate-900 text-sm leading-none">SMART BOX</div>
+          <div class="text-[10px] text-slate-500 leading-none mt-0.5">Tủ gửi đồ thông minh</div>
         </div>
       </div>
-      
-      <div class="flex items-center gap-4">
-        <div class="flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-          <span>Backend Online (Port 3000)</span>
-        </div>
-        <div id="clock" class="text-xs font-mono text-slate-400 border-l border-slate-800 pl-4 hidden sm:block">00:00:00</div>
+      <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-[10px] font-semibold text-emerald-700" id="statusText">Online</span>
       </div>
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-8">
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- MAIN                                         -->
+  <!-- ═══════════════════════════════════════════ -->
+  <main class="max-w-md mx-auto px-5 pt-8 pb-12">
 
-    <!-- SECTION 1: MÔ PHỎNG 3 Ô TỦ VẬT LÝ (LOCKER GRID) -->
-    <div>
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-          <i data-lucide="layout-grid" class="w-4 h-4"></i> Trạng thái 3 ô tủ vật lý
-        </h2>
-        <span class="text-xs text-slate-500">Tự động đồng bộ mỗi 1.5 giây</span>
-      </div>
+    <!-- Hero -->
+    <section class="text-center mb-8 animate-fade-in">
+      <h1 class="text-2xl font-extrabold text-slate-900 leading-tight mb-2">
+        Gửi & nhận đồ<br>
+        <span class="bg-gradient-to-r from-brand-500 to-brand-700 bg-clip-text text-transparent">không cần gặp mặt</span>
+      </h1>
+      <p class="text-sm text-slate-500 max-w-xs mx-auto">
+        Xác thực bằng OTP — Bảo mật tuyệt đối, hoạt động 24/7
+      </p>
+    </section>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="lockerGrid">
-        <!-- Render động bằng JS -->
-        <div class="animate-pulse bg-slate-800/50 rounded-2xl h-48"></div>
-        <div class="animate-pulse bg-slate-800/50 rounded-2xl h-48"></div>
-        <div class="animate-pulse bg-slate-800/50 rounded-2xl h-48"></div>
-      </div>
-    </div>
+    <!-- Action Cards -->
+    <section class="space-y-3">
 
-    <!-- SECTION 2: BẢNG ĐIỀU KHIỂN & KIOSK TƯƠNG TÁC -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      
-      <!-- CỘT TRÁI (2/3): TABS THAO TÁC CỦA SHIPPER & KHÁCH HÀNG -->
-      <div class="lg:col-span-2 bg-slate-800/40 border border-slate-800 rounded-2xl p-6 shadow-xl">
-        
-        <!-- Tab Navigation -->
-        <div class="flex border-b border-slate-700/60 mb-6 gap-2">
-          <button onclick="switchTab('deposit')" id="tab-deposit" class="px-5 py-2.5 font-medium text-sm rounded-t-lg bg-indigo-600 text-white flex items-center gap-2 transition">
-            <i data-lucide="package-plus" class="w-4 h-4"></i> 1. Shipper Đặt Tủ
-          </button>
-          <button onclick="switchTab('open')" id="tab-open" class="px-5 py-2.5 font-medium text-sm rounded-t-lg text-slate-400 hover:text-white flex items-center gap-2 transition">
-            <i data-lucide="qr-code" class="w-4 h-4"></i> 2. Mở Tủ Gửi Hàng
-          </button>
-          <button onclick="switchTab('pickup')" id="tab-pickup" class="px-5 py-2.5 font-medium text-sm rounded-t-lg text-slate-400 hover:text-white flex items-center gap-2 transition">
-            <i data-lucide="key-round" class="w-4 h-4"></i> 3. Khách Nhận Hàng (OTP)
-          </button>
+      <!-- SEND -->
+      <a href="/send.html"
+         class="group block relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 p-5 shadow-xl shadow-brand-500/25 active:scale-[0.98] transition-transform duration-150 animate-slide-up">
+        <div class="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full"></div>
+        <div class="absolute -right-2 -bottom-8 w-24 h-24 bg-white/10 rounded-full"></div>
+        <div class="relative flex items-center gap-4">
+          <div class="w-14 h-14 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
+            <i data-lucide="send" class="text-white" style="width:26px;height:26px;"></i>
+          </div>
+          <div class="flex-1">
+            <div class="text-white font-bold text-lg leading-tight">Gửi hàng</div>
+            <div class="text-white/80 text-xs mt-0.5">Đặt đồ vào tủ trong 3 phút</div>
+          </div>
+          <i data-lucide="chevron-right" class="text-white/80" style="width:22px;height:22px;"></i>
         </div>
+      </a>
 
-        <!-- FORM 1: SHIPPER TẠO ĐƠN / GIỮ CHỖ -->
-        <form id="form-deposit" class="space-y-5" onsubmit="handleCreateShipment(event)">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Số điện thoại Shipper</label>
-              <input type="text" id="sender_phone" required placeholder="0901234567" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Số điện thoại Người nhận</label>
-              <input type="text" id="recipient_phone" required placeholder="0987654321" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
-            </div>
+      <!-- RECEIVE -->
+      <a href="/receive.html"
+         class="group block relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 shadow-xl shadow-emerald-500/25 active:scale-[0.98] transition-transform duration-150 animate-slide-up"
+         style="animation-delay: 0.05s;">
+        <div class="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full"></div>
+        <div class="absolute -right-2 -bottom-8 w-24 h-24 bg-white/10 rounded-full"></div>
+        <div class="relative flex items-center gap-4">
+          <div class="w-14 h-14 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
+            <i data-lucide="package-open" class="text-white" style="width:26px;height:26px;"></i>
           </div>
-
-          <div>
-            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Chọn ngăn tủ muốn gửi</label>
-            <div class="grid grid-cols-3 gap-3">
-              <label class="cursor-pointer">
-                <input type="radio" name="locker_select" value="1" class="peer hidden" checked>
-                <div class="text-center py-3 rounded-xl border border-slate-700 bg-slate-900 peer-checked:border-indigo-500 peer-checked:bg-indigo-500/10 peer-checked:text-indigo-400 font-semibold text-sm">Tủ #1</div>
-              </label>
-              <label class="cursor-pointer">
-                <input type="radio" name="locker_select" value="2" class="peer hidden">
-                <div class="text-center py-3 rounded-xl border border-slate-700 bg-slate-900 peer-checked:border-indigo-500 peer-checked:bg-indigo-500/10 peer-checked:text-indigo-400 font-semibold text-sm">Tủ #2</div>
-              </label>
-              <label class="cursor-pointer">
-                <input type="radio" name="locker_select" value="3" class="peer hidden">
-                <div class="text-center py-3 rounded-xl border border-slate-700 bg-slate-900 peer-checked:border-indigo-500 peer-checked:bg-indigo-500/10 peer-checked:text-indigo-400 font-semibold text-sm">Tủ #3</div>
-              </label>
-            </div>
+          <div class="flex-1">
+            <div class="text-white font-bold text-lg leading-tight">Nhận hàng</div>
+            <div class="text-white/80 text-xs mt-0.5">Nhập OTP để mở tủ lấy đồ</div>
           </div>
-
-          <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl transition shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2">
-            <i data-lucide="check-circle" class="w-5 h-5"></i> Xác nhận giữ chỗ tủ
-          </button>
-        </form>
-
-        <!-- FORM 2: MỞ TỦ BẰNG QR TOKEN -->
-        <form id="form-open" class="space-y-5 hidden" onsubmit="handleOpenDeposit(event)">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Chọn tủ cần mở</label>
-              <select id="open_locker_id" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
-                <option value="1">Ngăn tủ #1</option>
-                <option value="2">Ngăn tủ #2</option>
-                <option value="3">Ngăn tủ #3</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Mã QR / Token Gửi hàng</label>
-              <input type="text" id="qr_token_input" required placeholder="Nhập mã Token vừa tạo" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 font-mono">
-            </div>
-          </div>
-
-          <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold py-3 rounded-xl transition shadow-lg shadow-amber-600/25 flex items-center justify-center gap-2">
-            <i data-lucide="unlock" class="w-5 h-5"></i> Bật chốt Servo mở tủ
-          </button>
-        </form>
-
-        <!-- FORM 3: KHÁCH NHẬN HÀNG BẰNG OTP -->
-        <form id="form-pickup" class="space-y-5 hidden" onsubmit="handleVerifyOtp(event)">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">SĐT Người nhận</label>
-              <input type="text" id="pickup_phone" required placeholder="Nhập SĐT nhận SMS" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Mã OTP (6 chữ số)</label>
-              <input type="text" id="pickup_otp" maxlength="6" required placeholder="123456" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono text-lg tracking-widest text-center">
-            </div>
-          </div>
-
-          <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2">
-            <i data-lucide="lock-open" class="w-5 h-5"></i> Xác nhận OTP & Lấy hàng
-          </button>
-        </form>
-
-        <!-- Alert Notification Box -->
-        <div id="responseAlert" class="mt-4 p-4 rounded-xl hidden text-sm font-medium flex items-center gap-3"></div>
-
-      </div>
-
-      <!-- CỘT PHẢI (1/3): GIẢ LẬP MÀNH HÌNH LCD 20x4 CỦA TỦ -->
-      <div class="bg-slate-800/40 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
-        <div>
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-              <i data-lucide="monitor" class="w-4 h-4"></i> Màn hình LCD 20x4 (Realtime)
-            </h3>
-            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-          </div>
-
-          <!-- Màn hình xanh lá LCD mô phỏng -->
-          <div class="bg-emerald-950 border-4 border-slate-950 p-4 rounded-xl shadow-inner text-emerald-400 font-lcd text-xs leading-relaxed tracking-wider whitespace-pre min-h-[120px] select-none shadow-emerald-900/20" id="lcdPreview">
-[SMART BOX KIOSK]
-System Ready...
-Connecting to Server...
-          </div>
+          <i data-lucide="chevron-right" class="text-white/80" style="width:22px;height:22px;"></i>
         </div>
+      </a>
 
-        <div class="mt-6 pt-4 border-t border-slate-800/80">
-          <p class="text-xs text-slate-500 leading-relaxed">
-            <i data-lucide="info" class="w-3.5 h-3.5 inline mr-1 text-slate-400"></i>
-            Nội dung hiển thị trên khung này phản hồi chính xác mã được render từ hàm <code class="text-indigo-400 font-mono">generateLcdPreview()</code> trên Backend.
-          </p>
+      <!-- ADMIN -->
+      <a href="/admin.html"
+         class="group block relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 p-5 shadow-xl shadow-slate-700/25 active:scale-[0.98] transition-transform duration-150 animate-slide-up"
+         style="animation-delay: 0.1s;">
+        <div class="absolute -right-6 -top-6 w-32 h-32 bg-white/5 rounded-full"></div>
+        <div class="relative flex items-center gap-4">
+          <div class="w-14 h-14 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center shrink-0">
+            <i data-lucide="shield-check" class="text-white" style="width:26px;height:26px;"></i>
+          </div>
+          <div class="flex-1">
+            <div class="text-white font-bold text-lg leading-tight">Quản trị</div>
+            <div class="text-white/70 text-xs mt-0.5">Dành cho nhân viên vận hành</div>
+          </div>
+          <i data-lucide="chevron-right" class="text-white/60" style="width:22px;height:22px;"></i>
         </div>
-      </div>
+      </a>
 
-    </div>
+    </section>
+
+    <!-- Trust Badges -->
+    <section class="mt-8 grid grid-cols-3 gap-3">
+      <div class="bg-white rounded-xl border border-slate-200/70 p-3 text-center shadow-sm">
+        <i data-lucide="shield-check" class="mx-auto text-brand-500 mb-1.5" style="width:20px;height:20px;"></i>
+        <div class="text-[10px] font-semibold text-slate-700 leading-tight">Bảo mật<br>OTP 6 số</div>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200/70 p-3 text-center shadow-sm">
+        <i data-lucide="clock" class="mx-auto text-brand-500 mb-1.5" style="width:20px;height:20px;"></i>
+        <div class="text-[10px] font-semibold text-slate-700 leading-tight">Hoạt động<br>24/7</div>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200/70 p-3 text-center shadow-sm">
+        <i data-lucide="zap" class="mx-auto text-brand-500 mb-1.5" style="width:20px;height:20px;"></i>
+        <div class="text-[10px] font-semibold text-slate-700 leading-tight">Gửi nhận<br>3 phút</div>
+      </div>
+    </section>
+
+    <!-- Live Lockers Preview -->
+    <section class="mt-8">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wide">Trạng thái tủ</h2>
+        <button onclick="refreshLockers()" class="text-[11px] text-brand-600 font-semibold flex items-center gap-1 active:opacity-60">
+          <i data-lucide="refresh-cw" style="width:12px;height:12px;"></i>
+          Làm mới
+        </button>
+      </div>
+      <div id="lockersPreview" class="grid grid-cols-3 gap-2.5">
+        <div class="bg-slate-100 animate-pulse rounded-xl h-20"></div>
+        <div class="bg-slate-100 animate-pulse rounded-xl h-20"></div>
+        <div class="bg-slate-100 animate-pulse rounded-xl h-20"></div>
+      </div>
+    </section>
 
   </main>
 
-  <!-- JAVASCRIPT LOGIC CONNECTING TO BACKEND -->
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- FOOTER                                       -->
+  <!-- ═══════════════════════════════════════════ -->
+  <footer class="max-w-md mx-auto px-5 pb-8 pt-4">
+    <div class="text-center text-[10px] text-slate-400 leading-relaxed">
+      <div class="font-semibold text-slate-500 mb-0.5">Smart Box IoT System</div>
+      <div>Đồ án IoT • v1.0 • © 2026</div>
+    </div>
+  </footer>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- SCRIPTS                                      -->
+  <!-- ═══════════════════════════════════════════ -->
   <script>
-    const API_BASE = '/api/v1';
-
-    // 1. Polling tự động lấy dữ liệu trạng thái tủ từ Backend
-    async function fetchLockersState() {
-      try {
-        const res = await fetch(`${API_BASE}/lockers`);
-        const data = await res.json();
-
-        if (data.success) {
-          renderLockers(data.lockers);
-          if (data.lcd_preview) {
-            document.getElementById('lcdPreview').textContent = data.lcd_preview;
-          }
-        }
-      } catch (err) {
-        console.error("Lỗi khi kết nối Backend:", err);
-      }
-    }
-
-    // Render giao diện 3 ô tủ vật lý
-    function renderLockers(lockers) {
-      const grid = document.getElementById('lockerGrid');
-      
-      const statusMap = {
-        'AVAILABLE': { label: 'TRỐNG', bg: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' },
-        'RESERVED': { label: 'ĐÃ ĐẶT CHỖ', bg: 'bg-amber-500/10 border-amber-500/30 text-amber-400' },
-        'DEPOSITING': { label: 'ĐANG GỬI', bg: 'bg-blue-500/10 border-blue-500/30 text-blue-400' },
-        'OCCUPIED': { label: 'CÓ HÀNG', bg: 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400' },
-        'PICKING': { label: 'ĐANG LẤY', bg: 'bg-purple-500/10 border-purple-500/30 text-purple-400' },
-        'MAINTENANCE': { label: 'BẢO TRÌ', bg: 'bg-rose-500/10 border-rose-500/30 text-rose-400' }
-      };
-
-      grid.innerHTML = lockers.map(locker => {
-        const conf = statusMap[locker.status] || { label: locker.status, bg: 'bg-slate-800 border-slate-700 text-slate-300' };
-        
-        return `
-          <div class="bg-slate-800/40 border border-slate-800 rounded-2xl p-5 relative overflow-hidden flex flex-col justify-between">
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-sm font-bold text-white">NGĂN TỦ #${locker.locker_id}</span>
-              <span class="text-xs px-2.5 py-1 rounded-full font-semibold border ${conf.bg}">
-                ${conf.label}
-              </span>
-            </div>
-
-            <div class="space-y-2 my-2 text-xs">
-              <div class="flex items-center justify-between text-slate-400">
-                <span>Cửa tủ:</span>
-                <span class="font-medium ${locker.door_closed ? 'text-slate-300' : 'text-amber-400 font-bold'}">
-                  ${locker.door_closed ? '🔒 Đã đóng' : '🔓 ĐANG MỞ'}
-                </span>
-              </div>
-              <div class="flex items-center justify-between text-slate-400">
-                <span>Cảm biến hàng:</span>
-                <span class="font-medium ${locker.has_item ? 'text-indigo-400 font-bold' : 'text-slate-500'}">
-                  ${locker.has_item ? '📦 Có vật phẩm' : '⚪ Trống'}
-                </span>
-              </div>
-            </div>
-
-            <div class="pt-3 border-t border-slate-800/80 text-[11px] text-slate-500 flex justify-between">
-              <span>LED: <b class="uppercase text-slate-400">${locker.led_color || 'OFF'}</b></span>
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      lucide.createIcons();
-    }
-
-    // 2. Chuyển đổi TAB Kiosk
-    function switchTab(tabName) {
-      ['deposit', 'open', 'pickup'].forEach(t => {
-        document.getElementById(`form-${t}`).classList.add('hidden');
-        document.getElementById(`tab-${t}`).className = "px-5 py-2.5 font-medium text-sm rounded-t-lg text-slate-400 hover:text-white flex items-center gap-2 transition";
-      });
-
-      document.getElementById(`form-${tabName}`).classList.remove('hidden');
-      document.getElementById(`tab-${tabName}`).className = "px-5 py-2.5 font-medium text-sm rounded-t-lg bg-indigo-600 text-white flex items-center gap-2 transition";
-    }
-
-    // 3. Xử lý Gọi API Backend
-    function showAlert(msg, isSuccess) {
-      const box = document.getElementById('responseAlert');
-      box.classList.remove('hidden', 'bg-emerald-500/10', 'text-emerald-400', 'border-emerald-500/20', 'bg-rose-500/10', 'text-rose-400', 'border-rose-500/20');
-      
-      if (isSuccess) {
-        box.classList.add('bg-emerald-500/10', 'text-emerald-400', 'border', 'border-emerald-500/20');
-      } else {
-        box.classList.add('bg-rose-500/10', 'text-rose-400', 'border', 'border-rose-500/20');
-      }
-      box.innerHTML = `<i data-lucide="${isSuccess ? 'check-circle-2' : 'alert-circle'}" class="w-5 h-5"></i> <span>${msg}</span>`;
-      lucide.createIcons();
-    }
-
-    // API 1: Shipper đặt chỗ tủ (/shipments/create)
-    async function handleCreateShipment(e) {
-      e.preventDefault();
-      const locker_id = document.querySelector('input[name="locker_select"]:checked').value;
-      const sender_phone = document.getElementById('sender_phone').value;
-      const recipient_phone = document.getElementById('recipient_phone').value;
-
-      try {
-        const res = await fetch(`${API_BASE}/shipments/create`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ locker_id, sender_phone, recipient_phone })
-        });
-        const data = await res.json();
-
-        if (data.success) {
-          showAlert(`Đặt giữ chỗ thành công! Mã QR Token của bạn là: <b>${data.qr_token}</b>`, true);
-          document.getElementById('qr_token_input').value = data.qr_token;
-        } else {
-          showAlert(data.message || 'Lỗi đặt tủ', false);
-        }
-      } catch (err) {
-        showAlert('Không thể kết nối Server Backend', false);
-      }
-    }
-
-    // API 2: Mở tủ gửi (/shipments/open-deposit)
-    async function handleOpenDeposit(e) {
-      e.preventDefault();
-      const locker_id = document.getElementById('open_locker_id').value;
-      const qr_token = document.getElementById('qr_token_input').value;
-
-      try {
-        const res = await fetch(`${API_BASE}/shipments/open-deposit`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ locker_id, qr_token })
-        });
-        const data = await res.json();
-
-        if (data.success) {
-          showAlert(`🎉 Đã phát lệnh mở chốt Servo cho Ngăn tủ #${locker_id}! Vui lòng bỏ hàng vào tủ và đóng cửa.`, true);
-        } else {
-          showAlert(data.message || 'Mã QR Token không hợp lệ', false);
-        }
-      } catch (err) {
-        showAlert('Không thể kết nối Server Backend', false);
-      }
-    }
-
-    // API 3: Nhận hàng OTP (/shipments/verify-otp)
-    async function handleVerifyOtp(e) {
-      e.preventDefault();
-      const recipient_phone = document.getElementById('pickup_phone').value;
-      const otp_code = document.getElementById('pickup_otp').value;
-
-      try {
-        const res = await fetch(`${API_BASE}/shipments/verify-otp`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ recipient_phone, otp_code })
-        });
-        const data = await res.json();
-
-        if (data.success) {
-          showAlert(`🎉 OTP chính xác! Đã mở chốt Servo tủ #${data.locker_id} để lấy hàng.`, true);
-        } else {
-          showAlert(data.message || 'Mã OTP không chính xác', false);
-        }
-      } catch (err) {
-        showAlert('Không thể kết nối Server Backend', false);
-      }
-    }
-
-    // Khởi tạo Đồng hồ & Polling Loop
-    setInterval(() => {
-      document.getElementById('clock').textContent = new Date().toLocaleTimeString('vi-VN');
-    }, 1000);
-
-    setInterval(fetchLockersState, 1500);
-    fetchLockersState();
+    // Init icons
     lucide.createIcons();
+
+    const API_BASE = window.location.origin;
+
+    // Status mapping
+    const STATUS_MAP = {
+      'AVAILABLE':    { label: 'TRỐNG',     dot: 'bg-emerald-500', bg: 'bg-emerald-50',  border: 'border-emerald-200',  text: 'text-emerald-700' },
+      'PENDING_SENDER': { label: 'CHỜ XÁC THỰC', dot: 'bg-amber-500',   bg: 'bg-amber-50',    border: 'border-amber-200',    text: 'text-amber-700' },
+      'RESERVED':     { label: 'GIỮ CHỖ',   dot: 'bg-amber-500',   bg: 'bg-amber-50',    border: 'border-amber-200',    text: 'text-amber-700' },
+      'DEPOSITING':   { label: 'ĐANG GỬI',  dot: 'bg-amber-500',   bg: 'bg-amber-50',    border: 'border-amber-200',    text: 'text-amber-700' },
+      'OCCUPIED':     { label: 'CÓ HÀNG',   dot: 'bg-rose-500',    bg: 'bg-rose-50',     border: 'border-rose-200',     text: 'text-rose-700' },
+      'PICKING':      { label: 'ĐANG LẤY',  dot: 'bg-amber-500',   bg: 'bg-amber-50',    border: 'border-amber-200',    text: 'text-amber-700' },
+      'MAINTENANCE':  { label: 'BẢO TRÌ',   dot: 'bg-slate-500',   bg: 'bg-slate-50',    border: 'border-slate-200',    text: 'text-slate-700' },
+      'EMERGENCY':    { label: 'KHẨN CẤP',  dot: 'bg-red-500',     bg: 'bg-red-50',      border: 'border-red-200',      text: 'text-red-700' },
+    };
+
+    async function refreshLockers() {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/lockers`);
+        const data = await res.json();
+
+        document.getElementById('statusText').textContent = 'Online';
+
+        const html = data.lockers.map(L => {
+          const s = STATUS_MAP[L.status] || STATUS_MAP['MAINTENANCE'];
+          return `
+            <div class="bg-white rounded-xl border ${s.border} p-3 shadow-sm">
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-mono text-xs font-bold text-slate-900">#${L.locker_id}</span>
+                <span class="w-2 h-2 rounded-full ${s.dot}"></span>
+              </div>
+              <div class="text-[10px] font-bold ${s.text} leading-tight">${s.label}</div>
+              <div class="text-[9px] text-slate-400 mt-0.5">Size ${L.size}</div>
+            </div>
+          `;
+        }).join('');
+
+        document.getElementById('lockersPreview').innerHTML = html;
+      } catch (e) {
+        document.getElementById('statusText').textContent = 'Offline';
+        console.error(e);
+      }
+    }
+
+    refreshLockers();
+    setInterval(refreshLockers, 3000);
   </script>
+
 </body>
 </html>
