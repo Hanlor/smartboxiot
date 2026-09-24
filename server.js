@@ -27,6 +27,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 const sqliteDb = require('./database');
 
 const PORT = process.env.PORT || 3000;
+// Rate limit config
+const RATE_LIMIT_ENABLED = process.env.RATE_LIMIT_ENABLED !== 'false';
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;   // 1 giờ
+const RATE_LIMIT_MAX_ATTEMPTS = 5;              // 5 đơn/giờ/SĐT
+const rateLimitStore = new Map();               // phone -> [timestamps]
 const SMS_GATEWAY_URL = 'http://192.168.1.5:8080/message';
 const OTP_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const RESERVATION_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -540,6 +545,8 @@ app.locals.helpers = {
   buildRecipientOtpMessage,     // <-- THÊM
   buildPickupConfirmMessage,    // <-- THÊM
   buildReminderMessage,         // <-- THÊM 
+  checkRateLimit,   // <-- THÊM
+  getRateLimitStatus,
 };
 // ═══════════════════════════════════════════════════════════
 // QR CODE GENERATOR (server-side, không phụ thuộc client)
@@ -833,6 +840,192 @@ setInterval(() => {
     h.online = isOnline;
   }
 }, 10000).unref();
+// ═══════════════════════════════════════════════════════════
+// RATE LIMIT (cho /shipments/create)
+// ═══════════════════════════════════════════════════════════
+
+function checkRateLimit(phone) {
+  if (!RATE_LIMIT_ENABLED) return { allowed: true, bypassed: true };
+
+  const now = Date.now();
+  const arr = (rateLimitStore.get(phone) || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+
+  if (arr.length >= RATE_LIMIT_MAX_ATTEMPTS) {
+    const oldest = arr[0];
+    const retryAfterSec = Math.ceil((RATE_LIMIT_WINDOW_MS - (now - oldest)) / 1000);
+    return { allowed: false, retryAfterSec, used: arr.length };
+  }
+
+  arr.push(now);
+  rateLimitStore.set(phone, arr);
+  return { allowed: true, remaining: RATE_LIMIT_MAX_ATTEMPTS - arr.length };
+}
+
+/**
+ * Admin: bật/tắt rate limit runtime
+ * POST /api/v1/admin/rate-limit  { adminKey, enabled }
+ */
+let rateLimitRuntimeOverride = null;  // null = dùng env
+
+app.post('/api/v1/admin/rate-limit', (req, res) => {
+  const { adminKey, enabled } = req.body || {};
+  const ADMIN_SECRET = process.env.ADMIN_SECRET_KEY || 'admin@smartbox123';
+
+  if (adminKey !== ADMIN_SECRET) {
+    return res.status(403).json({ success: false, message: 'Sai mật khẩu' });
+  }
+
+  if (typeof enabled === 'boolean') {
+    rateLimitRuntimeOverride = enabled;
+    console.log(`[RATE LIMIT] Runtime override: ${enabled ? 'ON' : 'OFF'}`);
+  } else {
+    rateLimitRuntimeOverride = null;
+    console.log('[RATE LIMIT] Reset về mặc định env');
+  }
+
+  return res.json({
+    success: true,
+    enabled: getRateLimitStatus(),
+    env_default: RATE_LIMIT_ENABLED,
+    runtime_override: rateLimitRuntimeOverride,
+  });
+});
+
+function getRateLimitStatus() {
+  if (rateLimitRuntimeOverride !== null) return rateLimitRuntimeOverride;
+  return RATE_LIMIT_ENABLED;
+}
+// ═══════════════════════════════════════════════════════════
+// SHIPMENT ARCHIVE + CLEANUP
+// ═══════════════════════════════════════════════════════════
+const ARCHIVE_FILE = path.join(__dirname, 'archived_shipments.json');
+const ARCHIVE_AFTER_MS = 7 * 24 * 3600 * 1000;   // Archive sau 7 ngày
+const ARCHIVE_TERMINAL_STATES = ['COMPLETED', 'ABORTED', 'EXPIRED', 'CANCELLED', 'FAILED_VERIFY'];
+
+/**
+ * Ghi shipments vào archive file (append)
+ */
+function archiveShipments(shipments) {
+  if (!shipments.length) return;
+
+  try {
+    let existing = [];
+    if (fs.existsSync(ARCHIVE_FILE)) {
+      try {
+        existing = JSON.parse(fs.readFileSync(ARCHIVE_FILE, 'utf8'));
+        if (!Array.isArray(existing)) existing = [];
+      } catch (e) { existing = []; }
+    }
+
+    existing.push(...shipments.map(s => ({
+      ...s,
+      archived_at: Date.now(),
+    })));
+
+    fs.writeFileSync(ARCHIVE_FILE, JSON.stringify(existing, null, 2), 'utf8');
+    console.log(`[ARCHIVE] Saved ${shipments.length} shipments → archive (total: ${existing.length})`);
+  } catch (err) {
+    console.error('[ARCHIVE] Failed:', err.message);
+  }
+}
+
+/**
+ * Cleanup: archive + xóa khỏi memory
+ */
+function cleanupOldShipments() {
+  const now = Date.now();
+  const toArchive = [];
+
+  for (const [id, s] of db.shipments.entries()) {
+    const age = now - (s.created_at || 0);
+    if (age > ARCHIVE_AFTER_MS && ARCHIVE_TERMINAL_STATES.includes(s.status)) {
+      toArchive.push(s);
+    }
+  }
+
+  if (!toArchive.length) return 0;
+
+  // 1. Archive vào file
+  archiveShipments(toArchive);
+
+  // 2. Xóa khỏi memory
+  for (const s of toArchive) {
+    db.shipments.delete(s.shipment_id);
+  }
+
+  console.log(`[CLEANUP] Removed ${toArchive.length} old shipments from memory (archived safely)`);
+  return toArchive.length;
+}
+
+// Chạy cleanup mỗi 6 giờ
+setInterval(cleanupOldShipments, 6 * 3600 * 1000).unref();
+
+/**
+ * Admin: xem archive
+ * GET /api/v1/admin/shipments/archive?limit=50
+ */
+app.get('/api/v1/admin/shipments/archive', (req, res) => {
+  try {
+    if (!fs.existsSync(ARCHIVE_FILE)) {
+      return res.json({ success: true, shipments: [], total: 0 });
+    }
+
+    const all = JSON.parse(fs.readFileSync(ARCHIVE_FILE, 'utf8'));
+    const limit = Math.min(Number(req.query.limit) || 100, 500);
+
+    const sorted = all.sort((a, b) => (b.archived_at || 0) - (a.archived_at || 0));
+    const sliced = sorted.slice(0, limit);
+
+    return res.json({
+      success: true,
+      shipments: sliced,
+      total: all.length,
+      showing: sliced.length,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/**
+ * Admin: force cleanup ngay
+ */
+app.post('/api/v1/admin/cleanup', (req, res) => {
+  const { adminKey } = req.body || {};
+  const ADMIN_SECRET = process.env.ADMIN_SECRET_KEY || 'admin@smartbox123';
+
+  if (adminKey !== ADMIN_SECRET) {
+    return res.status(403).json({ success: false, message: 'Sai mật khẩu' });
+  }
+
+  const count = cleanupOldShipments();
+  return res.json({
+    success: true,
+    archived: count,
+    remaining_in_memory: db.shipments.size,
+  });
+});
+/**
+ * GET status
+ */
+app.get('/api/v1/admin/rate-limit', (req, res) => {
+  return res.json({
+    success: true,
+    enabled: getRateLimitStatus(),
+    env_default: RATE_LIMIT_ENABLED,
+    runtime_override: rateLimitRuntimeOverride,
+    window_minutes: RATE_LIMIT_WINDOW_MS / 60000,
+    max_per_window: RATE_LIMIT_MAX_ATTEMPTS,
+    active_phones: rateLimitStore.size,
+  });
+});
+
+// Override checkRateLimit để dùng getRateLimitStatus()
+const _originalCheckRateLimit = checkRateLimit;
+checkRateLimit = function(phone) {
+  if (!getRateLimitStatus()) return { allowed: true, bypassed: true };
+  return _originalCheckRateLimit(phone);
+};
 app.get('/health', (_req, res) => {
   res.json({ success: true, service: 'smart-box-api', uptime_s: Math.round(process.uptime()) });
 });

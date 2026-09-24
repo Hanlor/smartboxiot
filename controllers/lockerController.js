@@ -142,7 +142,18 @@ async function createShipment(req, res) {
       message: 'SĐT người gửi và người nhận không được trùng nhau',
     });
   }
-
+  // ── Rate limit theo SĐT sender ──
+  if (helpers.checkRateLimit) {
+    const rl = helpers.checkRateLimit(senderIntl);
+    if (!rl.allowed) {
+      res.set('Retry-After', String(rl.retryAfterSec));
+      return res.status(429).json({
+        success: false,
+        message: `Bạn đã tạo quá nhiều đơn. Vui lòng thử lại sau ${Math.ceil(rl.retryAfterSec / 60)} phút.`,
+        retry_after_seconds: rl.retryAfterSec,
+      });
+    }
+  }
   // ── Kiểm tra lockout gửi OTP cho sender ──
   const senderSecurity = helpers.getOtpSecurity('sender:' + senderIntl);
   if (senderSecurity.locked_until && senderSecurity.locked_until > Date.now()) {
