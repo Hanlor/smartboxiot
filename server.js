@@ -697,6 +697,11 @@ app.locals.helpers = {
   buildReminderMessage,         // <-- THÊM 
   checkRateLimit,   // <-- THÊM
   getRateLimitStatus,
+   // ═══ ĐẢM BẢO CÓ 4 DÒNG NÀY ═══
+  RETURN_AFTER_MS,
+  EXTENSION_HOURS,
+  EXTENSION_MS,
+  MAX_EXTENSIONS,
 };
 // ═══════════════════════════════════════════════════════════
 // QR CODE GENERATOR (server-side, không phụ thuộc client)

@@ -1040,7 +1040,278 @@ function emergencyUnlock(req, res) {
     lcd_preview: helpers.generateLcdPreview(),
   });
 }
+// ---------------------------------------------------------------------------
+// GET /api/v1/shipments/mine?sender_phone=0912345678&status=OCCUPIED
+// Sender tra cứu đơn của mình (không cần đăng nhập, chỉ cần SĐT)
+// ---------------------------------------------------------------------------
+function getMyShipments(req, res) {
+  const { db, helpers } = getCtx(req);
+  const { sender_phone, status, limit } = req.query;
 
+  if (!isNonEmptyString(sender_phone)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Cần truyền sender_phone',
+    });
+  }
+
+  const phone = helpers.normalizePhoneVN(sender_phone);
+  if (!phone) {
+    return res.status(400).json({
+      success: false,
+      message: 'SĐT không hợp lệ',
+    });
+  }
+
+  // Lọc shipments của sender này
+  let list = [];
+  for (const s of db.shipments.values()) {
+    if (s.sender_phone !== phone) continue;
+    if (status && s.status !== status) continue;
+    list.push(s);
+  }
+
+  // Sort mới nhất trước
+  list.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+
+  // Limit
+  const lim = Math.min(Math.max(Number(limit) || 20, 1), 100);
+  list = list.slice(0, lim);
+
+  const now = Date.now();
+  const ACTIVE_STATES = ['PENDING_SENDER', 'RESERVED', 'DEPOSITING', 'OCCUPIED', 'EXPIRING', 'RETURN_TO_SENDER', 'RETURN_PICKING', 'PICKING'];
+
+  // Map view
+  const shipments = list.map(s => {
+    const locker = db.lockers.get(s.locker_id);
+    const deadline = s.deadline_at || null;
+
+    // Tính thời gian còn lại
+    let msLeft = null;
+    let isExpiring = false;
+    let isExpired = false;
+
+    if (deadline && ['OCCUPIED', 'EXPIRING'].includes(s.status)) {
+      msLeft = deadline - now;
+      isExpiring = msLeft > 0 && msLeft < 4 * 3600 * 1000; // < 4h
+      isExpired = msLeft <= 0;
+    }
+
+    return {
+      shipment_id: s.shipment_id,
+      locker_id: s.locker_id,
+      locker_size: locker ? locker.size : null,
+      locker_status: locker ? locker.status : null,
+      recipient_phone_masked: (s.recipient_phone || '')
+        .replace(/^\+84/, '0')
+        .replace(/(\d{4})\d+(\d{3})/, '$1***$2'),
+      status: s.status,
+      is_active: ACTIVE_STATES.includes(s.status),
+      created_at: s.created_at,
+      occupied_at: s.occupied_at,
+      completed_at: s.completed_at,
+      aborted_at: s.aborted_at,
+      cancelled_at: s.cancelled_at,
+      expired_at: s.expired_at,
+      // Deadline / extension info
+      deadline_at: deadline,
+      ms_left: msLeft,
+      is_expiring: isExpiring,
+      is_expired: isExpired,
+      extension_count: s.extension_count || 0,
+      can_extend: ['OCCUPIED', 'EXPIRING'].includes(s.status)
+                  && (s.extension_count || 0) < (helpers.MAX_EXTENSIONS || 1),
+    };
+  });
+
+  return res.json({
+    success: true,
+    sender_phone_masked: phone.replace(/^\+84/, '0').replace(/(\d{4})\d+(\d{3})/, '$1***$2'),
+    shipments,
+    total: shipments.length,
+    active_count: shipments.filter(s => s.is_active).length,
+  });
+}
+// ---------------------------------------------------------------------------
+// POST /api/v1/shipments/request-extension-otp
+// ---------------------------------------------------------------------------
+async function requestExtensionOtp(req, res) {
+  const { db, helpers, constants } = getCtx(req);
+  const { shipment_id } = req.body || {};
+
+  if (!isNonEmptyString(shipment_id)) {
+    return res.status(400).json({ success: false, message: 'shipment_id required' });
+  }
+
+  const shipment = db.shipments.get(shipment_id.trim());
+  if (!shipment) {
+    return res.status(404).json({ success: false, message: 'Không tìm thấy đơn' });
+  }
+
+  const locker = db.lockers.get(shipment.locker_id);
+  if (!locker || ![constants.LOCKER_STATUS.OCCUPIED, constants.LOCKER_STATUS.EXPIRING].includes(locker.status)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Tủ không ở trạng thái có thể gia hạn',
+    });
+  }
+
+  const MAX_EXTENSIONS = helpers.MAX_EXTENSIONS || 1;
+  if ((shipment.extension_count || 0) >= MAX_EXTENSIONS) {
+    return res.status(400).json({
+      success: false,
+      message: `Chỉ được gia hạn tối đa ${MAX_EXTENSIONS} lần`,
+    });
+  }
+
+  const otp = helpers.generateOtpCode();
+  db.otps.set(otp, {
+    otp_code: otp,
+    otp_type: 'extension',
+    locker_id: locker.locker_id,
+    shipment_id,
+    recipient_phone: shipment.sender_phone,
+    expires_at: Date.now() + constants.OTP_TTL_MS,
+    used: false,
+  });
+
+  const msg = `[SMARTBOX] Ma xac thuc GIA HAN: ${otp}\n` +
+              `Don ${shipment.shipment_id} - Tu #${locker.locker_id}\n` +
+              `Hieu luc 5 phut.\n` +
+              `Hotline: 0356 297 703`;
+  const smsResult = await helpers.sendSMSViaAndroid(shipment.sender_phone, msg);
+  helpers.persistState();
+
+  return res.json({
+    success: true,
+    message: smsResult.sent ? 'OTP gia hạn đã gửi tới SĐT người gửi' : 'Không gửi được OTP',
+    otp_sent: smsResult.sent,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/shipments/extend
+// ---------------------------------------------------------------------------
+async function extendShipment(req, res) {
+  const { db, helpers, constants } = getCtx(req);
+  const { shipment_id, sender_phone, otp_code } = req.body || {};
+
+  if (!isNonEmptyString(shipment_id) || !isNonEmptyString(sender_phone) || !isNonEmptyString(otp_code)) {
+    return res.status(400).json({ success: false, message: 'Thiếu tham số' });
+  }
+
+  const shipment = db.shipments.get(shipment_id.trim());
+  if (!shipment) {
+    return res.status(404).json({ success: false, message: 'Không tìm thấy đơn' });
+  }
+
+  const normalized = helpers.normalizePhoneVN(sender_phone);
+  if (normalized !== shipment.sender_phone) {
+    return res.status(403).json({ success: false, message: 'SĐT không khớp người gửi' });
+  }
+
+  const otpRecord = db.otps.get(otp_code.trim());
+  const valid = otpRecord
+    && !otpRecord.used
+    && otpRecord.recipient_phone === normalized
+    && otpRecord.otp_type === 'extension'
+    && otpRecord.shipment_id === shipment.shipment_id
+    && otpRecord.expires_at > Date.now();
+
+  if (!valid) {
+    return res.status(400).json({ success: false, message: 'OTP không đúng hoặc đã hết hạn' });
+  }
+
+  const MAX_EXTENSIONS = helpers.MAX_EXTENSIONS || 1;
+  const EXTENSION_MS = helpers.EXTENSION_MS || 24 * 3600 * 1000;
+  const EXTENSION_HOURS = helpers.EXTENSION_HOURS || 24;
+
+  if ((shipment.extension_count || 0) >= MAX_EXTENSIONS) {
+    return res.status(400).json({
+      success: false,
+      message: `Chỉ được gia hạn tối đa ${MAX_EXTENSIONS} lần`,
+    });
+  }
+
+  const locker = db.lockers.get(shipment.locker_id);
+  if (!locker || ![constants.LOCKER_STATUS.OCCUPIED, constants.LOCKER_STATUS.EXPIRING].includes(locker.status)) {
+    return res.status(400).json({ success: false, message: 'Tủ không ở trạng thái có thể gia hạn' });
+  }
+
+  const oldDeadline = shipment.deadline_at || Date.now();
+  shipment.deadline_at = oldDeadline + EXTENSION_MS;
+  shipment.extension_count = (shipment.extension_count || 0) + 1;
+  shipment.extended_at = Date.now();
+
+  if (locker.status === constants.LOCKER_STATUS.EXPIRING) {
+    helpers.applyStatus(locker, constants.LOCKER_STATUS.OCCUPIED);
+  }
+
+  otpRecord.used = true;
+  db.otps.delete(otp_code.trim());
+  helpers.persistState();
+
+  const msg = `[SMARTBOX] Nguoi gui da gia han them ${EXTENSION_HOURS}h.\n` +
+              `Ban co den ${new Date(shipment.deadline_at).toLocaleString('vi-VN')} de lay hang.\n` +
+              `Don ${shipment.shipment_id} - Tu #${locker.locker_id}`;
+  helpers.sendSMSViaAndroid(shipment.recipient_phone, msg);
+
+  return res.json({
+    success: true,
+    message: `Đã gia hạn thêm ${EXTENSION_HOURS} giờ`,
+    new_deadline_at: shipment.deadline_at,
+    extension_count: shipment.extension_count,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/shipments/verify-return-otp
+// ---------------------------------------------------------------------------
+async function verifyReturnOtp(req, res) {
+  const { db, helpers, constants } = getCtx(req);
+  const { sender_phone, otp_code } = req.body || {};
+
+  if (!isNonEmptyString(sender_phone) || !isNonEmptyString(otp_code)) {
+    return res.status(400).json({ success: false, message: 'Thiếu tham số' });
+  }
+
+  const phone = helpers.normalizePhoneVN(sender_phone);
+  if (!phone) {
+    return res.status(400).json({ success: false, message: 'SĐT không hợp lệ' });
+  }
+
+  const otpRecord = db.otps.get(otp_code.trim());
+  const valid = otpRecord
+    && !otpRecord.used
+    && otpRecord.otp_type === 'return'
+    && otpRecord.recipient_phone === phone
+    && otpRecord.expires_at > Date.now();
+
+  if (!valid) {
+    return res.status(400).json({ success: false, message: 'OTP không đúng hoặc hết hạn' });
+  }
+
+  const locker = db.lockers.get(otpRecord.locker_id);
+  if (!locker || locker.status !== constants.LOCKER_STATUS.RETURN_TO_SENDER) {
+    return res.status(400).json({
+      success: false,
+      message: 'Tủ không ở trạng thái chờ hoàn',
+      current_status: locker ? locker.status : null,
+    });
+  }
+
+  otpRecord.used = true;
+  db.otps.delete(otp_code.trim());
+  helpers.applyStatus(locker, constants.LOCKER_STATUS.RETURN_PICKING);
+  helpers.persistState();
+
+  return res.json({
+    success: true,
+    action: 'UNLOCK_SERVO',
+    locker_id: locker.locker_id,
+    message: 'Đã mở tủ. Vui lòng lấy hàng và đóng cửa.',
+  });
+}
 // ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
@@ -1058,7 +1329,5 @@ module.exports = {
   verifyAdminKey, 
   resendOtpByPhone,      // <-- THÊM
   cancelShipment,  
-  RETURN_AFTER_MS,              // <-- THÊM
-  EXTENSION_HOURS,              // <-- THÊM
-  MAX_EXTENSIONS,               // <-- THÊM
+  getMyShipments,   // <-- THÊM
 };
