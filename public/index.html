@@ -35,24 +35,27 @@
 <body class="font-sans bg-gradient-to-b from-slate-50 via-white to-slate-50 min-h-screen antialiased">
 
   <!-- HEADER -->
-  <header class="sticky top-0 z-50 glass border-b border-slate-200/60">
-    <div class="max-w-md mx-auto px-5 h-14 flex items-center justify-between">
-      <div class="flex items-center gap-2.5">
-        <img src="/assets/uth-logo.png" alt="UTH" class="logo-uth h-8 w-auto">
-        <div class="w-px h-6 bg-slate-200"></div>
-        <div>
-          <div class="font-extrabold text-slate-900 text-sm leading-none tracking-tight">SMART BOX</div>
-          <div class="text-[10px] text-slate-500 leading-none mt-0.5">Tủ gửi đồ thông minh</div>
+    <header class="sticky top-0 z-50 glass border-b border-slate-200/60">
+    <div class="max-w-md mx-auto px-4 h-14 flex items-center justify-between gap-2">
+      <!-- Logo + tên app -->
+      <div class="flex items-center gap-2 min-w-0 flex-1">
+        <img src="/assets/uth-logo.png" alt="UTH" class="logo-uth h-7 w-auto shrink-0">
+        <div class="w-px h-5 bg-slate-200 shrink-0"></div>
+        <div class="min-w-0">
+          <div class="font-extrabold text-slate-900 text-[13px] leading-none tracking-tight whitespace-nowrap">SMART BOX</div>
+          <div class="text-[9px] text-slate-500 leading-none mt-1 whitespace-nowrap">Tủ gửi đồ thông minh</div>
         </div>
       </div>
-            <div class="flex items-center gap-2">
-        <button onclick="location.href='#rewards'" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 hover:border-amber-300 transition">
-          <i data-lucide="sparkles" class="text-amber-500" style="width:12px;height:12px;"></i>
-          <span class="text-[11px] font-bold text-amber-700" id="headerPoints">0 điểm</span>
+
+      <!-- Badges -->
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button onclick="location.href='#rewards'" class="flex items-center gap-1 px-2 py-1 rounded-full bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 hover:border-amber-300 transition">
+          <i data-lucide="sparkles" class="text-amber-500" style="width:11px;height:11px;"></i>
+          <span class="text-[10px] font-bold text-amber-700 whitespace-nowrap" id="headerPoints">0 điểm</span>
         </button>
-        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-breathe"></span>
-          <span class="text-[10px] font-semibold text-emerald-700" id="statusText">Online</span>
+        <div class="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-breathe shrink-0"></span>
+          <span class="text-[10px] font-semibold text-emerald-700 whitespace-nowrap" id="statusText">Online</span>
         </div>
       </div>
     </div>
@@ -270,9 +273,22 @@
       'EMERGENCY':      { label: 'KHẨN CẤP',  dot: 'bg-red-500',     border: 'border-red-200',     text: 'text-red-700' },
     };
 
-    async function refreshLockers() {
+        async function refreshLockers() {
       try {
-        const res = await fetch(`${API_BASE}/api/v1/lockers`);
+        // Nếu đang Offline → đổi text thành "Đang kết nối..."
+        const statusEl = document.getElementById('statusText');
+        if (statusEl.textContent === 'Offline') {
+          statusEl.textContent = 'Đang kết nối...';
+        }
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s cho Render wake
+
+        const res = await fetch(`${API_BASE}/api/v1/lockers`, {
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
         const data = await res.json();
         document.getElementById('statusText').textContent = 'Online';
 
@@ -301,8 +317,10 @@
         } else {
           emptyEl.classList.add('hidden');
         }
-      } catch (e) {
+            } catch (e) {
         document.getElementById('statusText').textContent = 'Offline';
+        // Tự động thử lại sau 5 giây
+        setTimeout(refreshLockers, 5000);
       }
     }
 
