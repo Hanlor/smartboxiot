@@ -790,6 +790,130 @@ function verifyAdminKey(req, res) {
     message: 'Xác thực thành công',
   });
 }
+/**
+ * POST /api/v1/shipments/cancel
+ * Hủy đơn ở các trạng thái PENDING_SENDER / RESERVED / DEPOSITING.
+ */
+function cancelShipment(req, res) {
+  const { db, helpers, constants } = getCtx(req);
+  const { shipment_id, locker_id } = req.body || {};
+
+  let shipment = null;
+  let locker = null;
+
+  if (isNonEmptyString(shipment_id)) {
+    shipment = db.shipments.get(shipment_id.trim());
+    if (shipment) locker = db.lockers.get(shipment.locker_id);
+  } else if (locker_id !== undefined && locker_id !== null) {
+    const lockerId = parseLockerId(locker_id);
+    if (lockerId) {
+      locker = db.lockers.get(lockerId);
+      if (locker && locker.shipment_id) {
+        shipment = db.shipments.get(locker.shipment_id);
+      }
+    }
+  }
+
+  if (!locker) {
+    return res.status(404).json({ success: false, message: 'Không tìm thấy tủ' });
+  }
+
+  const cancellableStates = [
+    constants.LOCKER_STATUS.PENDING_SENDER,
+    constants.LOCKER_STATUS.RESERVED,
+    constants.LOCKER_STATUS.DEPOSITING,
+  ];
+
+  if (!cancellableStates.includes(locker.status)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Không thể hủy ở trạng thái này',
+      current_status: locker.status,
+    });
+  }
+
+  if (shipment) {
+    shipment.status = 'CANCELLED';
+    shipment.cancelled_at = Date.now();
+  }
+
+  // Xóa mọi OTP của locker này
+  for (const [key, otp] of db.otps.entries()) {
+    if (otp.locker_id === locker.locker_id) db.otps.delete(key);
+  }
+
+  helpers.clearLockerShipment(locker);
+  helpers.applyStatus(locker, constants.LOCKER_STATUS.AVAILABLE);
+  helpers.persistState();
+
+  return res.status(200).json({
+    success: true,
+    message: 'Đã hủy đơn',
+    locker_id: locker.locker_id,
+  });
+}
+
+/**
+ * POST /api/v1/shipments/resend-otp-by-phone
+ * Gửi lại OTP người nhận dựa trên SĐT (khi user không biết locker_id).
+ */
+async function resendOtpByPhone(req, res) {
+  const { db, helpers, constants } = getCtx(req);
+  const { recipient_phone } = req.body || {};
+
+  if (!isNonEmptyString(recipient_phone)) {
+    return res.status(400).json({ success: false, message: 'SĐT không hợp lệ' });
+  }
+
+  const phone = helpers.normalizePhoneVN(recipient_phone);
+  if (!phone) {
+    return res.status(400).json({ success: false, message: 'SĐT không hợp lệ' });
+  }
+
+  // Tìm tủ OCCUPIED khớp SĐT
+  let targetLocker = null;
+  for (const locker of db.lockers.values()) {
+    if (locker.status === constants.LOCKER_STATUS.OCCUPIED
+        && locker.recipient_phone === phone) {
+      targetLocker = locker;
+      break;
+    }
+  }
+
+  if (!targetLocker) {
+    return res.status(404).json({
+      success: false,
+      message: 'Không tìm thấy đơn đang chờ nhận với SĐT này',
+    });
+  }
+
+  helpers.invalidateOtpsForPhone(phone);
+
+  const otp = helpers.generateOtpCode();
+  db.otps.set(otp, {
+    otp_code: otp,
+    otp_type: 'recipient',
+    locker_id: targetLocker.locker_id,
+    shipment_id: targetLocker.shipment_id,
+    recipient_phone: phone,
+    expires_at: Date.now() + constants.OTP_TTL_MS,
+    used: false,
+  });
+
+  const security = helpers.getOtpSecurity(phone);
+  security.failed_attempts = 0;
+  security.locked_until = 0;
+
+  const smsResult = await helpers.sendSMSViaAndroid(phone, otp);
+  helpers.persistState();
+
+  return res.status(200).json({
+    success: true,
+    message: smsResult.sent ? 'Đã gửi lại OTP' : 'Không gửi được SMS',
+    otp_sent: smsResult.sent,
+    otp_send_error: smsResult.sent ? null : smsResult.error,
+  });
+}
 // ---------------------------------------------------------------------------
 // POST /api/v1/admin/emergency-unlock
 // ---------------------------------------------------------------------------
@@ -871,4 +995,6 @@ module.exports = {
   updateTelemetry,
   emergencyUnlock,
   verifyAdminKey, 
+  resendOtpByPhone,      // <-- THÊM
+  cancelShipment,  
 };

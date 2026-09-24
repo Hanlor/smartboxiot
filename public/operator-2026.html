@@ -42,11 +42,9 @@
 
 <body class="font-sans bg-slate-900 min-h-screen text-slate-100 antialiased grid-bg">
 
-  <!-- ═══════════════════════════════════════════ -->
-  <!-- LOGIN SCREEN                                 -->
-  <!-- ═══════════════════════════════════════════ -->
+  <!-- LOGIN SCREEN -->
   <div id="loginScreen" class="min-h-screen flex items-center justify-center p-5">
-    <div class="w-full max-w-sm animate-fade-in">
+    <div class="w-full max-w-sm">
       <div class="text-center mb-8">
         <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-2xl shadow-brand-500/40">
           <i data-lucide="shield-check" class="text-white" style="width:28px;height:28px;"></i>
@@ -87,13 +85,10 @@
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════ -->
-  <!-- DASHBOARD                                    -->
-  <!-- ═══════════════════════════════════════════ -->
+  <!-- DASHBOARD -->
   <div id="dashboard" class="hidden">
 
-    <!-- Top bar -->
-    <header class="glass-dark sticky top-0 z-50 border-b border-slate-800 bg-slate-900/85">
+    <header class="sticky top-0 z-50 border-b border-slate-800 bg-slate-900/85 backdrop-blur">
       <div class="max-w-6xl mx-auto px-5 h-14 flex items-center justify-between">
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
@@ -120,7 +115,6 @@
 
     <main class="max-w-6xl mx-auto px-5 py-6">
 
-      <!-- Stats -->
       <section class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
           <div class="flex items-center justify-between mb-2">
@@ -152,7 +146,6 @@
         </div>
       </section>
 
-      <!-- Emergency all -->
       <section class="mb-6">
         <button onclick="emergencyUnlockAll()"
                 class="w-full py-4 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 active:scale-[0.99] transition font-bold text-white text-sm shadow-lg shadow-rose-600/30 flex items-center justify-center gap-2">
@@ -161,15 +154,11 @@
         </button>
       </section>
 
-      <!-- Lockers grid -->
       <section class="mb-6">
         <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Trạng thái tủ</h2>
-        <div id="lockersGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <!-- Filled by JS -->
-        </div>
+        <div id="lockersGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
       </section>
 
-      <!-- LCD Preview -->
       <section class="mb-6">
         <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Màn hình LCD</h2>
         <div class="bg-black border-4 border-slate-700 rounded-2xl p-4 shadow-2xl">
@@ -182,7 +171,6 @@
         </div>
       </section>
 
-      <!-- Log -->
       <section>
         <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Nhật ký hoạt động</h2>
         <div id="actionLog" class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 max-h-48 overflow-y-auto font-mono text-[11px] space-y-1">
@@ -199,9 +187,46 @@
     </footer>
   </div>
 
-  <!-- ═══════════════════════════════════════════ -->
-  <!-- SCRIPTS                                      -->
-  <!-- ═══════════════════════════════════════════ -->
+  <!-- CONFIRM MODAL -->
+  <div id="confirmModal" class="hidden fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-5">
+    <div class="w-full max-w-md bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center shrink-0">
+          <i data-lucide="alert-triangle" class="text-rose-400" style="width:22px;height:22px;"></i>
+        </div>
+        <div>
+          <div class="font-extrabold text-white text-base" id="modalTitle">Xác nhận thao tác</div>
+          <div class="text-xs text-slate-400 mt-0.5" id="modalSubtitle">Hành động này không thể hoàn tác</div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/70 border border-slate-700 rounded-xl p-3 mb-4">
+        <div class="text-xs text-slate-300 leading-relaxed" id="modalMessage"></div>
+      </div>
+
+      <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">
+        Gõ chính xác: <span class="font-mono text-rose-400" id="modalKeyword"></span>
+      </label>
+      <input id="modalInput" type="text" autocomplete="off"
+             class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 outline-none text-white font-mono text-sm transition mb-4">
+
+      <div id="modalError" class="hidden mb-4 px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+        Nhập không khớp. Vui lòng thử lại.
+      </div>
+
+      <div class="flex gap-3">
+        <button onclick="closeModal()"
+                class="flex-1 py-3 rounded-xl bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold text-sm transition">
+          Hủy
+        </button>
+        <button id="modalConfirmBtn" onclick="confirmModal()"
+                class="flex-1 py-3 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-bold text-sm transition">
+          Xác nhận
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     lucide.createIcons();
 
@@ -210,14 +235,14 @@
     let pollTimer = null;
 
     const STATUS_MAP = {
-      'AVAILABLE':      { label: 'TRỐNG',        color: 'emerald', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-400' },
-      'PENDING_SENDER': { label: 'CHỜ XÁC THỰC', color: 'amber',   bg: 'bg-amber-500/10',   border: 'border-amber-500/30',   text: 'text-amber-400' },
-      'RESERVED':       { label: 'GIỮ CHỖ',      color: 'amber',   bg: 'bg-amber-500/10',   border: 'border-amber-500/30',   text: 'text-amber-400' },
-      'DEPOSITING':     { label: 'ĐANG GỬI',     color: 'amber',   bg: 'bg-amber-500/10',   border: 'border-amber-500/30',   text: 'text-amber-400' },
-      'OCCUPIED':       { label: 'CÓ HÀNG',      color: 'rose',    bg: 'bg-rose-500/10',    border: 'border-rose-500/30',    text: 'text-rose-400' },
-      'PICKING':        { label: 'ĐANG LẤY',     color: 'amber',   bg: 'bg-amber-500/10',   border: 'border-amber-500/30',   text: 'text-amber-400' },
-      'MAINTENANCE':    { label: 'BẢO TRÌ',      color: 'slate',   bg: 'bg-slate-500/10',   border: 'border-slate-500/30',   text: 'text-slate-400' },
-      'EMERGENCY':      { label: 'KHẨN CẤP',     color: 'red',     bg: 'bg-red-500/10',     border: 'border-red-500/30',     text: 'text-red-400' },
+      'AVAILABLE':      { label: 'TRỐNG',        color: 'emerald', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-400', dot: 'bg-emerald-400' },
+      'PENDING_SENDER': { label: 'CHỜ XÁC THỰC', color: 'amber',   bg: 'bg-amber-500/10',   border: 'border-amber-500/30',   text: 'text-amber-400',   dot: 'bg-amber-400' },
+      'RESERVED':       { label: 'GIỮ CHỖ',      color: 'amber',   bg: 'bg-amber-500/10',   border: 'border-amber-500/30',   text: 'text-amber-400',   dot: 'bg-amber-400' },
+      'DEPOSITING':     { label: 'ĐANG GỬI',     color: 'amber',   bg: 'bg-amber-500/10',   border: 'border-amber-500/30',   text: 'text-amber-400',   dot: 'bg-amber-400' },
+      'OCCUPIED':       { label: 'CÓ HÀNG',      color: 'rose',    bg: 'bg-rose-500/10',    border: 'border-rose-500/30',    text: 'text-rose-400',    dot: 'bg-rose-400' },
+      'PICKING':        { label: 'ĐANG LẤY',     color: 'amber',   bg: 'bg-amber-500/10',   border: 'border-amber-500/30',   text: 'text-amber-400',   dot: 'bg-amber-400' },
+      'MAINTENANCE':    { label: 'BẢO TRÌ',      color: 'slate',   bg: 'bg-slate-500/10',   border: 'border-slate-500/30',   text: 'text-slate-400',   dot: 'bg-slate-400' },
+      'EMERGENCY':      { label: 'KHẨN CẤP',     color: 'red',     bg: 'bg-red-500/10',     border: 'border-red-500/30',     text: 'text-red-400',     dot: 'bg-red-400' },
     };
 
     // ─── LOGIN ───
@@ -264,7 +289,6 @@
       }
     }
 
-    // Enter to login
     document.getElementById('adminKeyInput').addEventListener('keypress', e => {
       if (e.key === 'Enter') handleLogin();
     });
@@ -314,7 +338,7 @@
                 <span class="font-mono text-lg font-extrabold text-white">TỦ #${L.locker_id}</span>
                 <span class="text-[10px] text-slate-400 px-2 py-0.5 rounded bg-slate-800 border border-slate-700">${L.size}</span>
               </div>
-              <span class="w-2.5 h-2.5 rounded-full ${s.text === 'text-emerald-400' ? 'bg-emerald-400' : s.text === 'text-rose-400' ? 'bg-rose-400' : s.text === 'text-amber-400' ? 'bg-amber-400' : 'bg-slate-400'} animate-pulse"></span>
+              <span class="w-2.5 h-2.5 rounded-full ${s.dot} animate-pulse"></span>
             </div>
 
             <div class="mb-3">
@@ -363,17 +387,69 @@
         ['PENDING_SENDER', 'RESERVED', 'DEPOSITING', 'PICKING'].includes(L.status)).length;
     }
 
-    // ─── ADMIN ACTIONS ───
-    async function emergencyUnlockOne(lockerId) {
-      if (!confirm(`MỞ KHẨN CẤP TỦ #${lockerId}?\n\nChỉ dùng khi có sự cố.`)) return;
-      await callEmergencyUnlock({ adminKey, locker_id: lockerId });
-      log(`🚨 Đã mở khẩn cấp TỦ #${lockerId}`);
+    // ─── MODAL CONFIRM ───
+    let modalAction = null;
+
+    function openModal(opts) {
+      document.getElementById('modalTitle').textContent = opts.title;
+      document.getElementById('modalSubtitle').textContent = opts.subtitle || 'Hành động này không thể hoàn tác';
+      document.getElementById('modalMessage').innerHTML = opts.message;
+      document.getElementById('modalKeyword').textContent = opts.keyword;
+      document.getElementById('modalInput').value = '';
+      document.getElementById('modalError').classList.add('hidden');
+      modalAction = opts.onConfirm;
+      document.getElementById('confirmModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('modalInput').focus(), 100);
     }
 
-    async function emergencyUnlockAll() {
-      if (!confirm('MỞ KHẨN CẤP TOÀN BỘ 3 TỦ?\n\nHành động này sẽ mở hết khóa.\nXác nhận?')) return;
-      await callEmergencyUnlock({ adminKey, unlockAll: true });
-      log('🚨🚨 ĐÃ MỞ KHẨN CẤP TOÀN BỘ 3 TỦ!');
+    function closeModal() {
+      document.getElementById('confirmModal').classList.add('hidden');
+      modalAction = null;
+    }
+
+    function confirmModal() {
+      const entered = document.getElementById('modalInput').value.trim();
+      const expected = document.getElementById('modalKeyword').textContent;
+
+      if (entered !== expected) {
+        document.getElementById('modalError').classList.remove('hidden');
+        return;
+      }
+
+      const action = modalAction;
+      closeModal();
+      if (action) action();
+    }
+
+    document.getElementById('modalInput').addEventListener('keypress', e => {
+      if (e.key === 'Enter') confirmModal();
+    });
+
+    // ─── ADMIN ACTIONS ───
+    function emergencyUnlockOne(lockerId) {
+      openModal({
+        title: `Mở khẩn cấp TỦ #${lockerId}`,
+        subtitle: 'Chỉ dùng khi có sự cố khẩn cấp',
+        message: `Servo của tủ <b class="font-mono text-white">#${lockerId}</b> sẽ mở ngay lập tức.<br>Đảm bảo bạn đang đứng tại tủ trước khi xác nhận.`,
+        keyword: `MO ${lockerId}`,
+        onConfirm: async () => {
+          await callEmergencyUnlock({ adminKey, locker_id: lockerId });
+          log(`🚨 Đã mở khẩn cấp TỦ #${lockerId}`);
+        },
+      });
+    }
+
+    function emergencyUnlockAll() {
+      openModal({
+        title: 'MỞ KHẨN CẤP TẤT CẢ',
+        subtitle: 'Thao tác quy mô lớn — cần xác nhận kỹ',
+        message: `<b class="text-rose-400">CẢ 3 TỦ</b> sẽ mở khóa cùng lúc.<br>Hành động này sẽ ghi log và có thể ảnh hưởng giao dịch đang diễn ra.`,
+        keyword: 'MO HET',
+        onConfirm: async () => {
+          await callEmergencyUnlock({ adminKey, unlockAll: true });
+          log('🚨🚨 ĐÃ MỞ KHẨN CẤP TOÀN BỘ 3 TỦ!');
+        },
+      });
     }
 
     async function callEmergencyUnlock(body) {
@@ -406,7 +482,7 @@
       while (el.children.length > 50) el.removeChild(el.lastChild);
     }
 
-    // ─── AUTO-LOGIN if key exists ───
+    // ─── AUTO-LOGIN ───
     (async () => {
       if (adminKey) {
         try {

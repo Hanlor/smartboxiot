@@ -49,7 +49,6 @@
 
 <body class="font-sans bg-gradient-to-b from-slate-50 via-white to-slate-50 min-h-screen antialiased">
 
-  <!-- HEADER -->
   <header class="sticky top-0 z-50 glass border-b border-slate-200/60">
     <div class="max-w-md mx-auto px-5 h-14 flex items-center gap-3">
       <button onclick="goBack()" class="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center transition active:scale-95">
@@ -60,7 +59,6 @@
         <div class="text-[10px] text-slate-500 mt-0.5" id="stepLabel">Bước 1/4</div>
       </div>
     </div>
-    <!-- Progress bar -->
     <div class="h-1 bg-slate-100">
       <div id="progressBar" class="h-full bg-gradient-to-r from-brand-500 to-brand-700 transition-all duration-500" style="width: 25%;"></div>
     </div>
@@ -68,9 +66,7 @@
 
   <main class="max-w-md mx-auto px-5 pt-6 pb-12">
 
-    <!-- ═══════════════════════════════════════════ -->
-    <!-- STEP 1: Nhập SĐT + Chọn tủ                   -->
-    <!-- ═══════════════════════════════════════════ -->
+    <!-- STEP 1 -->
     <section id="step1" class="slide-in">
       <div class="mb-6">
         <h2 class="text-xl font-extrabold text-slate-900 mb-1">Thông tin gửi hàng</h2>
@@ -83,8 +79,7 @@
           <div class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
             <i data-lucide="user" style="width:18px;height:18px;"></i>
           </div>
-          <input id="senderPhone" type="tel" inputmode="numeric" maxlength="12"
-                 placeholder="0912 345 678"
+          <input id="senderPhone" type="tel" inputmode="numeric" maxlength="12" placeholder="0912 345 678"
                  class="w-full pl-11 pr-4 py-3.5 rounded-xl border-2 border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none text-slate-900 font-mono font-semibold text-base transition">
         </div>
       </div>
@@ -95,8 +90,7 @@
           <div class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
             <i data-lucide="user-check" style="width:18px;height:18px;"></i>
           </div>
-          <input id="recipientPhone" type="tel" inputmode="numeric" maxlength="12"
-                 placeholder="0769 259 051"
+          <input id="recipientPhone" type="tel" inputmode="numeric" maxlength="12" placeholder="0769 259 051"
                  class="w-full pl-11 pr-4 py-3.5 rounded-xl border-2 border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none text-slate-900 font-mono font-semibold text-base transition">
         </div>
       </div>
@@ -119,9 +113,7 @@
       </button>
     </section>
 
-    <!-- ═══════════════════════════════════════════ -->
-    <!-- STEP 2: Nhập OTP người gửi                  -->
-    <!-- ═══════════════════════════════════════════ -->
+    <!-- STEP 2 -->
     <section id="step2" class="hidden">
       <div class="mb-6">
         <div class="w-14 h-14 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-center mb-4">
@@ -163,9 +155,7 @@
       </button>
     </section>
 
-    <!-- ═══════════════════════════════════════════ -->
-    <!-- STEP 3: Chờ đóng cửa                         -->
-    <!-- ═══════════════════════════════════════════ -->
+    <!-- STEP 3 — ĐÃ FIX -->
     <section id="step3" class="hidden">
       <div class="text-center mb-6">
         <div class="relative inline-flex items-center justify-center mb-5">
@@ -194,15 +184,19 @@
         </div>
       </div>
 
-      <div class="text-center text-[11px] text-slate-400">
+      <div class="text-center text-[11px] text-slate-400 mb-4">
         <i data-lucide="info" class="inline" style="width:12px;height:12px;"></i>
         Nếu không có hàng bên trong, hệ thống sẽ tự hủy đơn
       </div>
+
+      <button onclick="cancelShipment()"
+              class="w-full py-3 rounded-xl border border-slate-200 hover:border-rose-300 hover:bg-rose-50 text-slate-500 hover:text-rose-600 text-xs font-semibold transition flex items-center justify-center gap-1.5">
+        <i data-lucide="x" style="width:13px;height:13px;"></i>
+        Hủy đơn và quay về
+      </button>
     </section>
 
-    <!-- ═══════════════════════════════════════════ -->
-    <!-- STEP 4: Hoàn tất                             -->
-    <!-- ═══════════════════════════════════════════ -->
+    <!-- STEP 4 -->
     <section id="step4" class="hidden">
       <div class="text-center">
         <div class="w-24 h-24 mx-auto mb-5 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-2xl shadow-emerald-500/40">
@@ -246,7 +240,6 @@
     const API_BASE = window.location.origin;
     const PHONE_FMT = v => v.replace(/\D/g, '').replace(/(\d{3,4})(\d{3})(\d{3,4})/, '$1 $2 $3').trim();
 
-    // ─── STATE ───
     let state = {
       step: 1,
       senderPhone: '',
@@ -256,14 +249,12 @@
       qrToken: null,
       timerInterval: null,
       pollInterval: null,
+      depositTimeout: null,
       otpSecondsLeft: 300,
       resendCount: 0,
       maxResend: 3,
     };
 
-    // ═══════════════════════════════════════════
-    // NAVIGATION
-    // ═══════════════════════════════════════════
     function showStep(n) {
       state.step = n;
       for (let i = 1; i <= 4; i++) {
@@ -279,12 +270,8 @@
       if (state.step === 1) return location.href = '/';
       if (state.step === 2) return showStep(1);
       if (state.step === 4) return location.href = '/';
-      // Step 3 không cho back (đang chờ tủ đóng)
     }
 
-    // ═══════════════════════════════════════════
-    // PHONE INPUT FORMATTING
-    // ═══════════════════════════════════════════
     ['senderPhone', 'recipientPhone'].forEach(id => {
       document.getElementById(id).addEventListener('input', e => {
         let v = e.target.value.replace(/\D/g, '').slice(0, 11);
@@ -292,9 +279,6 @@
       });
     });
 
-    // ═══════════════════════════════════════════
-    // LOAD LOCKERS
-    // ═══════════════════════════════════════════
     const LOCKER_VI = {
       'AVAILABLE': { label: 'TRỐNG', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
       'PENDING_SENDER': { label: 'CHỜ', badge: 'bg-amber-50 text-amber-700 border-amber-200' },
@@ -310,7 +294,6 @@
       try {
         const res = await fetch(`${API_BASE}/api/v1/lockers`);
         const data = await res.json();
-
         const el = document.getElementById('lockerPicker');
         el.innerHTML = data.lockers.map(L => {
           const info = LOCKER_VI[L.status] || LOCKER_VI['MAINTENANCE'];
@@ -343,13 +326,9 @@
       });
     }
 
-    // ═══════════════════════════════════════════
-    // STEP 1 → 2
-    // ═══════════════════════════════════════════
     async function submitStep1() {
       const errEl = document.getElementById('step1Error');
       errEl.classList.add('hidden');
-
       const sender = document.getElementById('senderPhone').value.replace(/\D/g, '');
       const recipient = document.getElementById('recipientPhone').value.replace(/\D/g, '');
 
@@ -367,11 +346,7 @@
         const res = await fetch(`${API_BASE}/api/v1/shipments/create`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sender_phone: sender,
-            recipient_phone: recipient,
-            locker_id: state.lockerId,
-          }),
+          body: JSON.stringify({ sender_phone: sender, recipient_phone: recipient, locker_id: state.lockerId }),
         });
         const data = await res.json();
 
@@ -404,9 +379,6 @@
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    // ═══════════════════════════════════════════
-    // OTP INPUT HANDLING
-    // ═══════════════════════════════════════════
     const otpInputs = document.querySelectorAll('.otp-input');
     otpInputs.forEach((inp, idx) => {
       inp.addEventListener('input', e => {
@@ -426,10 +398,7 @@
         e.preventDefault();
         const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
         text.split('').forEach((ch, i) => {
-          if (otpInputs[i]) {
-            otpInputs[i].value = ch;
-            otpInputs[i].classList.add('filled');
-          }
+          if (otpInputs[i]) { otpInputs[i].value = ch; otpInputs[i].classList.add('filled'); }
         });
         const next = Math.min(text.length, 5);
         otpInputs[next].focus();
@@ -437,18 +406,9 @@
       });
     });
 
-    function getOtpValue() {
-      return Array.from(otpInputs).map(i => i.value).join('');
-    }
+    function getOtpValue() { return Array.from(otpInputs).map(i => i.value).join(''); }
+    function clearOtp() { otpInputs.forEach(i => { i.value = ''; i.classList.remove('filled'); }); otpInputs[0].focus(); }
 
-    function clearOtp() {
-      otpInputs.forEach(i => { i.value = ''; i.classList.remove('filled'); });
-      otpInputs[0].focus();
-    }
-
-    // ═══════════════════════════════════════════
-    // OTP TIMER
-    // ═══════════════════════════════════════════
     function startOtpTimer() {
       state.otpSecondsLeft = 300;
       if (state.timerInterval) clearInterval(state.timerInterval);
@@ -460,7 +420,6 @@
           clearInterval(state.timerInterval);
           document.getElementById('otpTimer').textContent = 'Hết hạn';
           document.getElementById('otpTimer').classList.add('text-rose-600');
-          document.getElementById('otpTimer').classList.remove('text-slate-700');
         }
       }, 1000);
     }
@@ -474,14 +433,10 @@
       el.classList.toggle('text-slate-700', state.otpSecondsLeft >= 60);
     }
 
-    // ═══════════════════════════════════════════
-    // STEP 2 → 3
-    // ═══════════════════════════════════════════
     async function submitStep2() {
       const code = getOtpValue();
       const errEl = document.getElementById('step2Error');
       errEl.classList.add('hidden');
-
       if (code.length !== 6) return showErr(errEl, 'Vui lòng nhập đủ 6 số');
 
       const btn = document.getElementById('btn2');
@@ -490,7 +445,6 @@
       lucide.createIcons();
 
       try {
-        // 1. Verify sender OTP
         const res = await fetch(`${API_BASE}/api/v1/shipments/verify-sender`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -508,7 +462,6 @@
 
         state.qrToken = data.qr_token;
 
-        // 2. Open deposit
         const res2 = await fetch(`${API_BASE}/api/v1/shipments/open-deposit`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -523,7 +476,6 @@
           return showErr(errEl, data2.message || 'Không thể mở tủ');
         }
 
-        // Success → step 3
         document.getElementById('depositLocker').textContent = `tủ #${state.lockerId}`;
         if (state.timerInterval) clearInterval(state.timerInterval);
         showStep(3);
@@ -536,14 +488,9 @@
       }
     }
 
-    // ═══════════════════════════════════════════
-    // RESEND SENDER OTP
-    // ═══════════════════════════════════════════
     async function resendSenderOtp() {
       const btn = document.getElementById('btnResend');
-      if (state.resendCount >= state.maxResend) {
-        return alert('Bạn đã gửi lại OTP quá nhiều lần. Vui lòng quay lại sau.');
-      }
+      if (state.resendCount >= state.maxResend) return alert('Bạn đã gửi lại OTP quá nhiều lần.');
 
       btn.disabled = true;
       btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" style="width:13px;height:13px;"></i> Đang gửi lại...';
@@ -556,18 +503,15 @@
           body: JSON.stringify({ shipment_id: state.shipmentId }),
         });
         const data = await res.json();
-
         if (!res.ok) {
-          alert(data.message || 'Không gửi lại được. Vui lòng thử lại sau.');
+          alert(data.message || 'Không gửi lại được.');
         } else {
           state.resendCount++;
           clearOtp();
           startOtpTimer();
           document.getElementById('step2Error').classList.add('hidden');
         }
-      } catch (e) {
-        alert('Lỗi kết nối');
-      }
+      } catch (e) { alert('Lỗi kết nối'); }
 
       btn.disabled = false;
       btn.innerHTML = `<i data-lucide="refresh-cw" style="width:13px;height:13px;"></i> Không nhận được mã? Gửi lại (${state.maxResend - state.resendCount})`;
@@ -575,10 +519,16 @@
     }
 
     // ═══════════════════════════════════════════
-    // POLLING DEPOSIT (Step 3 → 4)
+    // POLLING DEPOSIT — ĐÃ CÓ TIMEOUT
     // ═══════════════════════════════════════════
     function startPollingDeposit() {
       if (state.pollInterval) clearInterval(state.pollInterval);
+
+      state.depositTimeout = setTimeout(() => {
+        if (state.pollInterval) clearInterval(state.pollInterval);
+        showDepositTimeout();
+      }, 90000);
+
       state.pollInterval = setInterval(async () => {
         try {
           const res = await fetch(`${API_BASE}/api/v1/lockers`);
@@ -587,7 +537,8 @@
           if (!locker) return;
 
           if (locker.status === 'OCCUPIED') {
-            clearInterval(state.pollInterval);
+            if (state.pollInterval) clearInterval(state.pollInterval);
+            if (state.depositTimeout) clearTimeout(state.depositTimeout);
             document.getElementById('shipmentId').textContent = state.shipmentId;
             document.getElementById('recipientDisplay').textContent = PHONE_FMT(state.recipientPhone);
             showStep(4);
@@ -596,9 +547,42 @@
       }, 2000);
     }
 
-    // ═══════════════════════════════════════════
-    // INIT
-    // ═══════════════════════════════════════════
+    function showDepositTimeout() {
+      const html = `
+        <div class="text-center py-8">
+          <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-amber-50 border-2 border-amber-200 flex items-center justify-center">
+            <i data-lucide="clock-alert" class="text-amber-600" style="width:36px;height:36px;"></i>
+          </div>
+          <h2 class="text-xl font-extrabold text-slate-900 mb-2">Quá thời gian chờ</h2>
+          <p class="text-sm text-slate-500 mb-6">
+            Không phát hiện cửa tủ đóng sau 90 giây.<br>
+            Vui lòng kiểm tra tủ hoặc thử lại.
+          </p>
+          <button onclick="location.href='/'" class="w-full py-4 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 font-bold text-white text-sm">
+            Về trang chủ
+          </button>
+        </div>
+      `;
+      document.querySelector('main').innerHTML = html;
+      lucide.createIcons();
+    }
+
+    async function cancelShipment() {
+      if (!confirm('Hủy đơn và quay về?\n\nTủ sẽ được mở khóa sau khi hủy.')) return;
+
+      try {
+        await fetch(`${API_BASE}/api/v1/shipments/cancel`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ shipment_id: state.shipmentId }),
+        });
+      } catch (e) {}
+
+      if (state.pollInterval) clearInterval(state.pollInterval);
+      if (state.depositTimeout) clearTimeout(state.depositTimeout);
+      location.href = '/';
+    }
+
     loadLockers();
     setInterval(loadLockers, 5000);
   </script>

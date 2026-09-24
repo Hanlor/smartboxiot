@@ -13,5 +13,7 @@ router.post('/shipments/resend-otp', lockerController.resendOtp);
 router.post('/telemetry/update', lockerController.updateTelemetry);
 router.post('/admin/verify', lockerController.verifyAdminKey);
 router.post('/admin/emergency-unlock', lockerController.emergencyUnlock);
+router.post('/shipments/cancel', lockerController.cancelShipment);
+router.post('/shipments/resend-otp-by-phone', lockerController.resendOtpByPhone);
 
 module.exports = router;

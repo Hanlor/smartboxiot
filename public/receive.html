@@ -21,7 +21,7 @@
             mono: ['JetBrains Mono', 'monospace'],
           },
           colors: {
-            brand: { 500:'#10B981', 600:'#059669', 700:'#047857' }
+            brand: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 600:'#059669', 700:'#047857' }
           }
         }
       }
@@ -67,13 +67,11 @@
 
   <main class="max-w-md mx-auto px-5 pt-6 pb-12">
 
-    <!-- ═══════════════════════════════════════════ -->
-    <!-- STEP 1: Nhập SĐT + OTP                       -->
-    <!-- ═══════════════════════════════════════════ -->
+    <!-- STEP 1 -->
     <section id="step1" class="slide-in">
       <div class="mb-6">
-        <div class="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-4">
-          <i data-lucide="package-open" class="text-emerald-600" style="width:26px;height:26px;"></i>
+        <div class="w-14 h-14 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-center mb-4">
+          <i data-lucide="package-open" class="text-brand-600" style="width:26px;height:26px;"></i>
         </div>
         <h2 class="text-xl font-extrabold text-slate-900 mb-1">Lấy hàng của bạn</h2>
         <p class="text-xs text-slate-500">Nhập SĐT và mã OTP từ tin nhắn</p>
@@ -85,8 +83,7 @@
           <div class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
             <i data-lucide="user-check" style="width:18px;height:18px;"></i>
           </div>
-          <input id="recipientPhone" type="tel" inputmode="numeric" maxlength="12"
-                 placeholder="0769 259 051"
+          <input id="recipientPhone" type="tel" inputmode="numeric" maxlength="12" placeholder="0769 259 051"
                  class="w-full pl-11 pr-4 py-3.5 rounded-xl border-2 border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none text-slate-900 font-mono font-semibold text-base transition">
         </div>
       </div>
@@ -111,17 +108,21 @@
         Mở tủ
       </button>
 
+      <button id="btnResendRecipient" onclick="resendRecipientOtp()"
+              class="w-full mt-3 py-3 rounded-xl text-slate-600 hover:text-brand-600 text-xs font-semibold transition flex items-center justify-center gap-1.5">
+        <i data-lucide="refresh-cw" style="width:13px;height:13px;"></i>
+        Không nhận được OTP? Gửi lại
+      </button>
+
       <div class="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
         <div class="text-[11px] text-slate-600 leading-relaxed">
           <b class="text-slate-900">Chưa có mã OTP?</b><br>
-          Mã được gửi tự động khi người gửi đặt hàng vào tủ. Nếu không nhận được, vui lòng liên hệ người gửi.
+          Mã có hiệu lực 5 phút kể từ khi người gửi đặt hàng vào tủ. Nếu quá hạn, bấm "Gửi lại".
         </div>
       </div>
     </section>
 
-    <!-- ═══════════════════════════════════════════ -->
-    <!-- STEP 2: Đang mở tủ / Lấy hàng                -->
-    <!-- ═══════════════════════════════════════════ -->
+    <!-- STEP 2 -->
     <section id="step2" class="hidden">
       <div class="text-center mb-6">
         <div class="relative inline-flex items-center justify-center mb-5">
@@ -150,15 +151,19 @@
         </div>
       </div>
 
-      <div class="text-center text-[11px] text-slate-400">
+      <div class="text-center text-[11px] text-slate-400 mb-4">
         <i data-lucide="info" class="inline" style="width:12px;height:12px;"></i>
         Hãy kiểm tra hàng trước khi đóng cửa
       </div>
+
+      <button onclick="cancelPickup()"
+              class="w-full py-3 rounded-xl border border-slate-200 hover:border-rose-300 hover:bg-rose-50 text-slate-500 hover:text-rose-600 text-xs font-semibold transition flex items-center justify-center gap-1.5">
+        <i data-lucide="x" style="width:13px;height:13px;"></i>
+        Đóng cửa và quay về
+      </button>
     </section>
 
-    <!-- ═══════════════════════════════════════════ -->
-    <!-- STEP 3: Hoàn tất                             -->
-    <!-- ═══════════════════════════════════════════ -->
+    <!-- STEP 3 -->
     <section id="step3" class="hidden">
       <div class="text-center">
         <div class="w-24 h-24 mx-auto mb-5 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-2xl shadow-emerald-500/40">
@@ -199,11 +204,11 @@
       recipientPhone: '',
       lockerId: null,
       pollInterval: null,
+      pickupTimeout: null,
+      resendCount: 0,
+      maxResend: 3,
     };
 
-    // ═══════════════════════════════════════════
-    // NAVIGATION
-    // ═══════════════════════════════════════════
     function showStep(n) {
       state.step = n;
       for (let i = 1; i <= 3; i++) {
@@ -218,20 +223,13 @@
     function goBack() {
       if (state.step === 1) return location.href = '/';
       if (state.step === 3) return location.href = '/';
-      // Step 2 không cho back
     }
 
-    // ═══════════════════════════════════════════
-    // PHONE FORMAT
-    // ═══════════════════════════════════════════
     document.getElementById('recipientPhone').addEventListener('input', e => {
       let v = e.target.value.replace(/\D/g, '').slice(0, 11);
       e.target.value = v ? PHONE_FMT(v) : '';
     });
 
-    // ═══════════════════════════════════════════
-    // OTP INPUTS
-    // ═══════════════════════════════════════════
     const otpInputs = document.querySelectorAll('.otp-input');
     otpInputs.forEach((inp, idx) => {
       inp.addEventListener('input', e => {
@@ -251,10 +249,7 @@
         e.preventDefault();
         const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
         text.split('').forEach((ch, i) => {
-          if (otpInputs[i]) {
-            otpInputs[i].value = ch;
-            otpInputs[i].classList.add('filled');
-          }
+          if (otpInputs[i]) { otpInputs[i].value = ch; otpInputs[i].classList.add('filled'); }
         });
         const next = Math.min(text.length, 5);
         otpInputs[next].focus();
@@ -262,18 +257,9 @@
       });
     });
 
-    function getOtpValue() {
-      return Array.from(otpInputs).map(i => i.value).join('');
-    }
+    function getOtpValue() { return Array.from(otpInputs).map(i => i.value).join(''); }
+    function clearOtp() { otpInputs.forEach(i => { i.value = ''; i.classList.remove('filled'); }); otpInputs[0].focus(); }
 
-    function clearOtp() {
-      otpInputs.forEach(i => { i.value = ''; i.classList.remove('filled'); });
-      otpInputs[0].focus();
-    }
-
-    // ═══════════════════════════════════════════
-    // SUBMIT RECEIVE
-    // ═══════════════════════════════════════════
     async function submitReceive() {
       const errEl = document.getElementById('step1Error');
       errEl.classList.add('hidden');
@@ -325,11 +311,14 @@
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    // ═══════════════════════════════════════════
-    // POLLING PICKUP (Step 2 → 3)
-    // ═══════════════════════════════════════════
     function startPollingPickup() {
       if (state.pollInterval) clearInterval(state.pollInterval);
+
+      state.pickupTimeout = setTimeout(() => {
+        if (state.pollInterval) clearInterval(state.pollInterval);
+        showPickupTimeout();
+      }, 90000);
+
       state.pollInterval = setInterval(async () => {
         try {
           const res = await fetch(`${API_BASE}/api/v1/lockers`);
@@ -338,11 +327,80 @@
           if (!locker) return;
 
           if (locker.status === 'AVAILABLE') {
-            clearInterval(state.pollInterval);
+            if (state.pollInterval) clearInterval(state.pollInterval);
+            if (state.pickupTimeout) clearTimeout(state.pickupTimeout);
             showStep(3);
           }
         } catch (e) {}
       }, 2000);
+    }
+
+    function showPickupTimeout() {
+      const html = `
+        <div class="text-center py-8">
+          <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-amber-50 border-2 border-amber-200 flex items-center justify-center">
+            <i data-lucide="clock-alert" class="text-amber-600" style="width:36px;height:36px;"></i>
+          </div>
+          <h2 class="text-xl font-extrabold text-slate-900 mb-2">Quá thời gian chờ</h2>
+          <p class="text-sm text-slate-500 mb-6">
+            Không phát hiện cửa tủ đóng sau 90 giây.<br>
+            Vui lòng kiểm tra lại hoặc liên hệ hỗ trợ.
+          </p>
+          <button onclick="location.href='/'" class="w-full py-4 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 font-bold text-white text-sm">
+            Về trang chủ
+          </button>
+        </div>
+      `;
+      document.querySelector('main').innerHTML = html;
+      lucide.createIcons();
+    }
+
+    function cancelPickup() {
+      if (!confirm('Đóng cửa và quay về?')) return;
+      if (state.pollInterval) clearInterval(state.pollInterval);
+      if (state.pickupTimeout) clearTimeout(state.pickupTimeout);
+      location.href = '/';
+    }
+
+    async function resendRecipientOtp() {
+      const phone = document.getElementById('recipientPhone').value.replace(/\D/g, '');
+      const btn = document.getElementById('btnResendRecipient');
+
+      if (phone.length < 10) {
+        return alert('Vui lòng nhập SĐT trước khi gửi lại OTP');
+      }
+
+      if (state.resendCount >= state.maxResend) {
+        return alert('Bạn đã gửi lại quá nhiều lần. Vui lòng liên hệ người gửi.');
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" style="width:13px;height:13px;"></i> Đang gửi...';
+      lucide.createIcons();
+
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/shipments/resend-otp-by-phone`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recipient_phone: phone }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.message || 'Không gửi lại được OTP');
+        } else {
+          state.resendCount++;
+          clearOtp();
+          document.getElementById('step1Error').classList.add('hidden');
+          alert('Đã gửi lại OTP. Vui lòng kiểm tra tin nhắn.');
+        }
+      } catch (e) {
+        alert('Lỗi kết nối');
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = `<i data-lucide="refresh-cw" style="width:13px;height:13px;"></i> Không nhận được OTP? Gửi lại (${state.maxResend - state.resendCount})`;
+      lucide.createIcons();
     }
   </script>
 
