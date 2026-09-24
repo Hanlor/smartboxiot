@@ -2,7 +2,8 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#6366F1">
   <title>Quản lý đơn — Smart Box</title>
   <link rel="stylesheet" href="/assets/premium.css">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -10,21 +11,38 @@
   <script>
     tailwind.config = {
       theme: { extend: {
-        fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] }
+        fontFamily: {
+          sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+          mono: ['JetBrains Mono', 'monospace']
+        },
+        colors: { brand: { 50:'#EEF2FF', 100:'#E0E7FF', 500:'#6366F1', 600:'#4F46E5', 700:'#4338CA' } }
       }}
     }
   </script>
+  <style>
+    body { -webkit-tap-highlight-color: transparent; }
+    .glass { backdrop-filter: blur(12px); background: rgba(255,255,255,0.85); }
+    .otp-box {
+      width: 44px; height: 56px; text-align: center;
+      font-size: 20px; font-weight: 700;
+      border: 2px solid #E2E8F0; border-radius: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      outline: none; transition: all .15s;
+    }
+    .otp-box:focus { border-color: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
+    .otp-box.filled { border-color: #6366F1; background: #EEF2FF; }
+  </style>
 </head>
-<body class="font-sans bg-slate-50 min-h-screen">
+<body class="font-sans bg-gradient-to-b from-slate-50 via-white to-slate-50 min-h-screen antialiased">
 
   <header class="sticky top-0 z-50 glass border-b border-slate-200/60">
     <div class="max-w-md mx-auto px-4 h-14 flex items-center gap-3">
-      <a href="/" class="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center">
+      <a href="/" class="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center transition active:scale-95">
         <i data-lucide="arrow-left" class="text-slate-700" style="width:20px;height:20px;"></i>
       </a>
       <div class="flex-1">
-        <div class="font-extrabold text-slate-900 text-sm">Quản lý đơn hàng</div>
-        <div class="text-[10px] text-slate-500">Xem trạng thái và gia hạn</div>
+        <div class="font-extrabold text-slate-900 text-sm leading-none tracking-tight">Quản lý đơn hàng</div>
+        <div class="text-[10px] text-slate-500 mt-0.5">Tra cứu & gia hạn</div>
       </div>
       <img src="/assets/uth-logo.png" alt="UTH" class="logo-uth h-6 w-auto opacity-80">
     </div>
@@ -33,34 +51,59 @@
   <main class="max-w-md mx-auto px-5 pt-6 pb-12">
 
     <!-- Lookup form -->
-    <div id="lookupForm" class="card-premium p-5 mb-4">
+    <section id="lookupSection" class="card-premium p-5 mb-4">
       <h2 class="text-lg font-extrabold text-slate-900 mb-1 tracking-tight">Tra cứu đơn hàng</h2>
-      <p class="text-xs text-slate-500 mb-4">Nhập mã đơn hoặc SĐT người gửi</p>
+      <p class="text-xs text-slate-500 mb-4">Nhập SĐT người gửi để xem các đơn đã tạo</p>
 
       <div class="mb-4">
         <label class="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">SĐT người gửi</label>
-        <input id="senderPhone" type="tel" inputmode="numeric" maxlength="12" placeholder="0912 345 678"
-               class="w-full px-4 py-3.5 rounded-xl border-2 border-slate-200 focus:border-brand-500 outline-none text-slate-900 font-mono font-semibold transition">
+        <div class="relative">
+          <div class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+            <i data-lucide="user" style="width:18px;height:18px;"></i>
+          </div>
+          <input id="senderPhone" type="tel" inputmode="numeric" maxlength="12" placeholder="0912 345 678"
+                 class="w-full pl-11 pr-4 py-3.5 rounded-xl border-2 border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none text-slate-900 font-mono font-semibold text-base transition">
+        </div>
       </div>
 
-      <button onclick="lookupShipments()"
-              class="btn-shine w-full py-4 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 text-white font-bold text-sm shadow-lg shadow-brand-500/30">
-        Tra cứu
+      <button id="btnLookup" onclick="lookupShipments()"
+              class="btn-shine w-full py-4 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 text-white font-bold text-sm shadow-lg shadow-brand-500/30 flex items-center justify-center gap-2">
+        <i data-lucide="search" style="width:16px;height:16px;"></i>
+        <span>Tra cứu</span>
       </button>
-    </div>
+    </section>
 
     <!-- Results -->
-    <div id="results" class="space-y-3"></div>
+    <section id="resultsSection" class="hidden">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+          <i data-lucide="package" style="width:14px;height:14px;"></i>
+          <span id="resultsTitle">Kết quả</span>
+        </h2>
+        <button onclick="lookupShipments()" class="text-[11px] text-brand-600 font-semibold flex items-center gap-1 active:opacity-60">
+          <i data-lucide="refresh-cw" style="width:12px;height:12px;"></i>
+          Làm mới
+        </button>
+      </div>
+      <div id="results" class="space-y-3"></div>
+    </section>
 
   </main>
 
-  <!-- Extension Modal -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- EXTENSION OTP MODAL                                    -->
+  <!-- ═══════════════════════════════════════════════════════ -->
   <div id="extendModal" class="hidden fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-5">
     <div class="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl animate-scale-in">
-      <h3 class="text-xl font-extrabold text-slate-900 mb-1">Gia hạn đơn hàng</h3>
-      <p class="text-xs text-slate-500 mb-5">
-        Nhập OTP gửi tới SĐT <span id="extendPhone" class="font-mono font-bold"></span>
-      </p>
+      <div class="text-center mb-5">
+        <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-lg shadow-brand-500/30">
+          <i data-lucide="clock-plus" class="text-white" style="width:26px;height:26px;"></i>
+        </div>
+        <h3 class="text-xl font-extrabold text-slate-900 tracking-tight mb-1">Xác thực gia hạn</h3>
+        <p class="text-xs text-slate-500">
+          Nhập OTP gửi tới <span id="extendPhone" class="font-mono font-bold text-slate-700"></span>
+        </p>
+      </div>
 
       <div class="flex justify-center gap-2 mb-5" id="extendOtpInputs">
         <input class="otp-box" maxlength="1" type="tel" inputmode="numeric">
@@ -74,8 +117,51 @@
       <div id="extendError" class="hidden mb-4 px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs"></div>
 
       <div class="flex gap-2">
-        <button onclick="closeExtendModal()" class="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm">Hủy</button>
-        <button onclick="submitExtend()" class="btn-shine flex-1 py-3 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 text-white font-bold text-sm">Xác nhận</button>
+        <button onclick="closeExtendModal()" class="flex-1 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-sm transition">
+          Hủy
+        </button>
+        <button id="btnExtendConfirm" onclick="submitExtend()"
+                class="btn-shine flex-1 py-3 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 text-white font-bold text-sm shadow-lg shadow-brand-500/30">
+          Xác nhận
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- RETURN OTP MODAL                                       -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div id="returnModal" class="hidden fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-5">
+    <div class="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl animate-scale-in">
+      <div class="text-center mb-5">
+        <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/30">
+          <i data-lucide="package-check" class="text-white" style="width:26px;height:26px;"></i>
+        </div>
+        <h3 class="text-xl font-extrabold text-slate-900 tracking-tight mb-1">Nhận lại hàng hoàn</h3>
+        <p class="text-xs text-slate-500">
+          Nhập OTP để mở tủ lấy lại hàng
+        </p>
+      </div>
+
+      <div class="flex justify-center gap-2 mb-5" id="returnOtpInputs">
+        <input class="otp-box" maxlength="1" type="tel" inputmode="numeric">
+        <input class="otp-box" maxlength="1" type="tel" inputmode="numeric">
+        <input class="otp-box" maxlength="1" type="tel" inputmode="numeric">
+        <input class="otp-box" maxlength="1" type="tel" inputmode="numeric">
+        <input class="otp-box" maxlength="1" type="tel" inputmode="numeric">
+        <input class="otp-box" maxlength="1" type="tel" inputmode="numeric">
+      </div>
+
+      <div id="returnError" class="hidden mb-4 px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs"></div>
+
+      <div class="flex gap-2">
+        <button onclick="closeReturnModal()" class="flex-1 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-sm transition">
+          Hủy
+        </button>
+        <button id="btnReturnConfirm" onclick="submitReturn()"
+                class="btn-shine flex-1 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-sm shadow-lg shadow-amber-500/30">
+          Mở tủ
+        </button>
       </div>
     </div>
   </div>
@@ -83,54 +169,373 @@
   <script src="/assets/toast.js"></script>
   <script>
     lucide.createIcons();
+
     const API_BASE = window.location.origin;
     const PHONE_FMT = v => v.replace(/\D/g, '').replace(/(\d{3,4})(\d{3})(\d{3,4})/, '$1 $2 $3').trim();
 
     let currentShipmentId = null;
+    let currentSenderPhone = '';
 
+    // ═══ PHONE INPUT ═══
     document.getElementById('senderPhone').addEventListener('input', e => {
       let v = e.target.value.replace(/\D/g, '').slice(0, 11);
       e.target.value = v ? PHONE_FMT(v) : '';
     });
 
+    // ═══ LOOKUP ═══
     async function lookupShipments() {
       const phone = document.getElementById('senderPhone').value.replace(/\D/g, '');
-      if (phone.length < 10) return showToast('SĐT không hợp lệ', 'error');
+      if (phone.length < 10) {
+        return showToast('SĐT không hợp lệ', 'error');
+      }
 
-      const res = await fetch(`${API_BASE}/api/v1/admin/shipments?limit=50`);
-      const data = await res.json();
+      const btn = document.getElementById('btnLookup');
+      const orig = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" style="width:16px;height:16px;"></i> Đang tra cứu...';
+      lucide.createIcons();
 
-      // Client-side filter theo SĐT sender (backend không có endpoint này)
-      // Trong production nên có endpoint riêng
-      const results = document.getElementById('results');
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/shipments/mine?sender_phone=${phone}&limit=20`);
+        const data = await res.json();
 
-      // Chỉ hiện hướng dẫn — trong production sẽ gọi API riêng
-      results.innerHTML = `
-        <div class="card-premium p-5 text-center">
-          <i data-lucide="info" class="mx-auto text-brand-500 mb-3" style="width:32px;height:32px;"></i>
-          <div class="text-sm font-bold text-slate-900 mb-1">Tính năng đang hoàn thiện</div>
-          <div class="text-xs text-slate-500">
-            Vui lòng liên hệ hotline <b class="font-mono">0356 297 703</b> để được hỗ trợ gia hạn đơn hàng.
+        if (!data.success) {
+          showToast(data.message || 'Lỗi tra cứu', 'error');
+          btn.disabled = false;
+          btn.innerHTML = orig;
+          lucide.createIcons();
+          return;
+        }
+
+        currentSenderPhone = phone;
+
+        const section = document.getElementById('resultsSection');
+        const results = document.getElementById('results');
+        const title = document.getElementById('resultsTitle');
+        section.classList.remove('hidden');
+
+        if (!data.shipments.length) {
+          title.textContent = 'Không có đơn';
+          results.innerHTML = `
+            <div class="card-premium p-6 text-center">
+              <i data-lucide="inbox" class="mx-auto text-slate-400 mb-3" style="width:36px;height:36px;"></i>
+              <div class="text-sm font-bold text-slate-900 mb-1">Không có đơn nào</div>
+              <div class="text-xs text-slate-500">SĐT này chưa tạo đơn hàng nào.</div>
+            </div>
+          `;
+        } else {
+          title.textContent = `${data.total} đơn · ${data.active_count} đang hoạt động`;
+          results.innerHTML = data.shipments.map(renderShipmentCard).join('');
+        }
+
+        lucide.createIcons();
+      } catch (e) {
+        showToast('Lỗi kết nối', 'error');
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = orig;
+      lucide.createIcons();
+    }
+
+    // ═══ RENDER CARD ═══
+    const STATUS_LABEL = {
+      PENDING_SENDER: 'Chờ xác thực',
+      RESERVED: 'Đã giữ chỗ',
+      DEPOSITING: 'Đang gửi',
+      OCCUPIED: 'Có hàng',
+      EXPIRING: 'Sắp hết hạn',
+      RETURN_TO_SENDER: 'Chờ hoàn về',
+      RETURN_PICKING: 'Đang hoàn',
+      PICKING: 'Đang lấy',
+      COMPLETED: 'Hoàn tất',
+      ABORTED: 'Đã hủy',
+      EXPIRED: 'Hết hạn',
+      CANCELLED: 'Đã hủy',
+      FAILED_VERIFY: 'Sai OTP',
+      RETURNED: 'Đã hoàn',
+    };
+
+    const STATUS_COLOR = {
+      COMPLETED: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+      RETURNED: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+      OCCUPIED: 'text-rose-700 bg-rose-50 border-rose-200',
+      EXPIRING: 'text-amber-700 bg-amber-50 border-amber-200',
+      RETURN_TO_SENDER: 'text-amber-700 bg-amber-50 border-amber-200',
+      RETURN_PICKING: 'text-amber-700 bg-amber-50 border-amber-200',
+      ABORTED: 'text-slate-500 bg-slate-50 border-slate-200',
+      EXPIRED: 'text-slate-500 bg-slate-50 border-slate-200',
+      CANCELLED: 'text-slate-500 bg-slate-50 border-slate-200',
+      FAILED_VERIFY: 'text-rose-500 bg-rose-50 border-rose-200',
+      PENDING_SENDER: 'text-amber-700 bg-amber-50 border-amber-200',
+      RESERVED: 'text-blue-700 bg-blue-50 border-blue-200',
+      DEPOSITING: 'text-amber-700 bg-amber-50 border-amber-200',
+      PICKING: 'text-amber-700 bg-amber-50 border-amber-200',
+    };
+
+    function renderShipmentCard(s) {
+      const label = STATUS_LABEL[s.status] || s.status;
+      const color = STATUS_COLOR[s.status] || 'text-slate-600 bg-slate-50 border-slate-200';
+
+      // Time left
+      let timeLeft = '';
+      let timeClass = 'text-slate-500';
+      if (s.ms_left != null && s.ms_left > 0) {
+        const h = Math.floor(s.ms_left / 3600000);
+        const m = Math.floor((s.ms_left % 3600000) / 60000);
+        timeLeft = `Còn ${h}h ${m}m`;
+        if (s.is_expiring) timeClass = 'text-rose-600 font-bold';
+      } else if (s.is_expired) {
+        timeLeft = 'Đã hết hạn';
+        timeClass = 'text-rose-600 font-bold';
+      }
+
+      // Actions
+      let actionsHtml = '';
+      if (s.can_extend) {
+        actionsHtml += `
+          <button onclick="startExtend('${s.shipment_id}')"
+                  class="w-full mt-3 py-2.5 rounded-lg bg-gradient-to-r from-brand-500 to-brand-700 text-white text-xs font-bold shadow-md shadow-brand-500/20">
+            ⏰ Gia hạn thêm giờ
+          </button>
+        `;
+      }
+      if (s.status === 'RETURN_TO_SENDER') {
+        actionsHtml += `
+          <button onclick="startReturn('${s.shipment_id}')"
+                  class="w-full mt-3 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white text-xs font-bold shadow-md shadow-amber-500/20">
+            📦 Mở tủ nhận lại hàng
+          </button>
+        `;
+      }
+
+      const extensionNote = s.extension_count > 0
+        ? `<div class="text-[10px] text-slate-500 mt-1.5">Đã gia hạn ${s.extension_count} lần</div>`
+        : '';
+
+      return `
+        <div class="card-premium p-4">
+          <div class="flex items-start justify-between mb-2">
+            <div>
+              <div class="font-mono font-extrabold text-slate-900 text-sm">${s.shipment_id}</div>
+              <div class="text-[10px] text-slate-500 mt-0.5">
+                Tủ #${s.locker_id} • Size ${s.locker_size || '?'}
+              </div>
+            </div>
+            <div class="text-[10px] font-bold px-2 py-1 rounded border ${color} whitespace-nowrap">${label}</div>
           </div>
+
+          <div class="flex items-center justify-between text-[10px] mb-1">
+            <span class="text-slate-500 font-mono">→ ${s.recipient_phone_masked}</span>
+            ${timeLeft ? `<span class="${timeClass}">${timeLeft}</span>` : ''}
+          </div>
+
+          ${extensionNote}
+          ${actionsHtml}
         </div>
       `;
-      lucide.createIcons();
+    }
+
+    // ═══ EXTENSION ═══
+    async function startExtend(shipmentId) {
+      currentShipmentId = shipmentId;
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/shipments/request-extension-otp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ shipment_id: shipmentId }),
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+          return showToast(data.message || 'Không thể gia hạn', 'error');
+        }
+
+        showToast('OTP đã gửi tới SĐT của bạn', 'success');
+        document.getElementById('extendPhone').textContent = PHONE_FMT(currentSenderPhone);
+        document.getElementById('extendError').classList.add('hidden');
+        document.getElementById('extendOtpInputs').querySelectorAll('input').forEach(i => {
+          i.value = '';
+          i.classList.remove('filled');
+        });
+        document.getElementById('extendModal').classList.remove('hidden');
+        setTimeout(() => document.querySelector('#extendOtpInputs input').focus(), 200);
+      } catch (e) {
+        showToast('Lỗi kết nối', 'error');
+      }
     }
 
     function closeExtendModal() {
       document.getElementById('extendModal').classList.add('hidden');
     }
-  </script>
 
-  <style>
-    .otp-box {
-      width: 44px; height: 56px; text-align: center;
-      font-size: 20px; font-weight: 700;
-      border: 2px solid #E2E8F0; border-radius: 12px;
-      font-family: 'JetBrains Mono', monospace;
+    async function submitExtend() {
+      const inputs = document.querySelectorAll('#extendOtpInputs input');
+      const otp = Array.from(inputs).map(i => i.value).join('').trim();
+      const errEl = document.getElementById('extendError');
+      errEl.classList.add('hidden');
+
+      if (otp.length !== 6) {
+        errEl.textContent = 'Nhập đủ 6 số';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      const btn = document.getElementById('btnExtendConfirm');
+      const orig = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" style="width:14px;height:14px;"></i> Đang xử lý...';
+      lucide.createIcons();
+
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/shipments/extend`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            shipment_id: currentShipmentId,
+            sender_phone: currentSenderPhone,
+            otp_code: otp,
+          }),
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+          errEl.textContent = data.message || 'Lỗi';
+          errEl.classList.remove('hidden');
+          btn.disabled = false;
+          btn.innerHTML = orig;
+          lucide.createIcons();
+          return;
+        }
+
+        showToast(data.message || 'Đã gia hạn thành công', 'success');
+        if (window.fireConfetti) fireConfetti(30);
+        closeExtendModal();
+        setTimeout(lookupShipments, 500);
+      } catch (e) {
+        errEl.textContent = 'Lỗi kết nối';
+        errEl.classList.remove('hidden');
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = orig;
+      lucide.createIcons();
     }
-    .otp-box:focus { border-color: #6366F1; outline: none; }
-  </style>
+
+    // ═══ RETURN PICKUP ═══
+    function startReturn(shipmentId) {
+      currentShipmentId = shipmentId;
+      document.getElementById('returnError').classList.add('hidden');
+      document.getElementById('returnOtpInputs').querySelectorAll('input').forEach(i => {
+        i.value = '';
+        i.classList.remove('filled');
+      });
+      document.getElementById('returnModal').classList.remove('hidden');
+      setTimeout(() => document.querySelector('#returnOtpInputs input').focus(), 200);
+    }
+
+    function closeReturnModal() {
+      document.getElementById('returnModal').classList.add('hidden');
+    }
+
+    async function submitReturn() {
+      const inputs = document.querySelectorAll('#returnOtpInputs input');
+      const otp = Array.from(inputs).map(i => i.value).join('').trim();
+      const errEl = document.getElementById('returnError');
+      errEl.classList.add('hidden');
+
+      if (otp.length !== 6) {
+        errEl.textContent = 'Nhập đủ 6 số';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      const btn = document.getElementById('btnReturnConfirm');
+      const orig = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" style="width:14px;height:14px;"></i> Đang mở...';
+      lucide.createIcons();
+
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/shipments/verify-return-otp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sender_phone: currentSenderPhone,
+            otp_code: otp,
+          }),
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+          errEl.textContent = data.message || 'Lỗi';
+          errEl.classList.remove('hidden');
+          btn.disabled = false;
+          btn.innerHTML = orig;
+          lucide.createIcons();
+          return;
+        }
+
+        showToast('Tủ đã mở. Vui lòng lấy hàng và đóng cửa.', 'success');
+        if (window.fireConfetti) fireConfetti(30);
+        closeReturnModal();
+        setTimeout(lookupShipments, 500);
+      } catch (e) {
+        errEl.textContent = 'Lỗi kết nối';
+        errEl.classList.remove('hidden');
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = orig;
+      lucide.createIcons();
+    }
+
+    // ═══ OTP INPUT HANDLERS ═══
+    function setupOtpInputs(containerId) {
+      const inputs = document.querySelectorAll(`#${containerId} input`);
+      inputs.forEach((inp, idx) => {
+        inp.addEventListener('input', e => {
+          e.target.value = e.target.value.replace(/\D/g, '').slice(-1);
+          e.target.classList.toggle('filled', !!e.target.value);
+          if (e.target.value && idx < inputs.length - 1) inputs[idx + 1].focus();
+        });
+        inp.addEventListener('keydown', e => {
+          if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+            inputs[idx - 1].focus();
+            inputs[idx - 1].value = '';
+            inputs[idx - 1].classList.remove('filled');
+          }
+        });
+        inp.addEventListener('paste', e => {
+          e.preventDefault();
+          const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+          text.split('').forEach((ch, i) => {
+            if (inputs[i]) {
+              inputs[i].value = ch;
+              inputs[i].classList.add('filled');
+            }
+          });
+          inputs[Math.min(text.length, inputs.length - 1)].focus();
+        });
+      });
+    }
+
+    setupOtpInputs('extendOtpInputs');
+    setupOtpInputs('returnOtpInputs');
+
+    // ═══ ENTER TO SUBMIT ═══
+    document.getElementById('senderPhone').addEventListener('keypress', e => {
+      if (e.key === 'Enter') lookupShipments();
+    });
+
+    // ═══ AUTO-LOOKUP if URL has ?phone= ═══
+    const urlParams = new URLSearchParams(window.location.search);
+    const phoneFromURL = urlParams.get('phone');
+    if (phoneFromURL) {
+      document.getElementById('senderPhone').value = PHONE_FMT(phoneFromURL);
+      setTimeout(lookupShipments, 300);
+    }
+  </script>
 
 </body>
 </html>
