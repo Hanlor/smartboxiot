@@ -562,6 +562,81 @@ app.get('/api/v1/qr', async (req, res) => {
   }
 });
 // ═══════════════════════════════════════════════════════════
+// ADMIN — Shipment History
+// ═══════════════════════════════════════════════════════════
+
+function maskPhone(phone) {
+  if (!phone || phone.length < 8) return phone || '—';
+  // +84912345678 → +8491***678
+  const head = phone.slice(0, 6);
+  const tail = phone.slice(-3);
+  return `${head}***${tail}`;
+}
+
+app.get('/api/v1/admin/shipments', (req, res) => {
+  const { limit = 100, status, locker_id } = req.query;
+
+  let list = [...db.shipments.values()];
+
+  // Sort mới nhất trước
+  list.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+
+  // Filter theo status
+  if (status) {
+    list = list.filter(s => s.status === status);
+  }
+
+  // Filter theo locker_id
+  if (locker_id) {
+    const lid = Number(locker_id);
+    list = list.filter(s => s.locker_id === lid);
+  }
+
+  // Limit
+  const lim = Math.min(Math.max(Number(limit) || 100, 1), 500);
+  list = list.slice(0, lim);
+
+  // Mask SĐT cho privacy
+  const masked = list.map(s => ({
+    shipment_id: s.shipment_id,
+    locker_id: s.locker_id,
+    sender_phone_masked: maskPhone(s.sender_phone),
+    recipient_phone_masked: maskPhone(s.recipient_phone),
+    status: s.status || 'UNKNOWN',
+    created_at: s.created_at || null,
+    verified_at: s.verified_at || null,
+    occupied_at: s.occupied_at || null,
+    completed_at: s.completed_at || null,
+    aborted_at: s.aborted_at || null,
+    cancelled_at: s.cancelled_at || null,
+    expired_at: s.expired_at || null,
+    duration_s: s.completed_at && s.created_at
+      ? Math.round((s.completed_at - s.created_at) / 1000)
+      : null,
+  }));
+
+  // Stats tổng hợp
+  const now = Date.now();
+  const todayStart = new Date().setHours(0, 0, 0, 0);
+
+  const stats = {
+    total: db.shipments.size,
+    today: [...db.shipments.values()].filter(s => (s.created_at || 0) >= todayStart).length,
+    pending: [...db.shipments.values()].filter(s =>
+      ['PENDING_SENDER', 'RESERVED', 'DEPOSITING', 'PENDING'].includes(s.status)).length,
+    completed: [...db.shipments.values()].filter(s => s.status === 'COMPLETED').length,
+    failed: [...db.shipments.values()].filter(s =>
+      ['ABORTED', 'EXPIRED', 'CANCELLED', 'FAILED_VERIFY'].includes(s.status)).length,
+  };
+
+  return res.json({
+    success: true,
+    shipments: masked,
+    stats,
+    filters: { status: status || null, locker_id: locker_id || null, limit: lim },
+  });
+});
+// ═══════════════════════════════════════════════════════════
 // HARDWARE HEALTH MONITORING
 // ═══════════════════════════════════════════════════════════
 const HEALTH_TIMEOUT_MS = 60000;  // 60s không heartbeat = offline

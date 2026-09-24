@@ -159,7 +159,70 @@
         <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Trạng thái tủ</h2>
         <div id="lockersGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
       </section>
+      <!-- ═══ LỊCH SỬ GIAO DỊCH ═══ -->
+      <section class="mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-2">
+            <i data-lucide="receipt" style="width:14px;height:14px;"></i>
+            Lịch sử giao dịch
+          </h2>
+          <button onclick="refreshShipments()" class="text-[10px] text-brand-400 hover:text-brand-300 font-semibold flex items-center gap-1">
+            <i data-lucide="refresh-cw" style="width:11px;height:11px;"></i>
+            Làm mới
+          </button>
+        </div>
 
+        <!-- Stats -->
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
+          <div class="bg-slate-800/50 border border-slate-700 rounded-lg p-2.5">
+            <div class="text-[9px] text-slate-500 uppercase tracking-wide">Tổng</div>
+            <div class="text-lg font-extrabold text-white" id="statShipTotal">0</div>
+          </div>
+          <div class="bg-slate-800/50 border border-slate-700 rounded-lg p-2.5">
+            <div class="text-[9px] text-slate-500 uppercase tracking-wide">Hôm nay</div>
+            <div class="text-lg font-extrabold text-brand-400" id="statShipToday">0</div>
+          </div>
+          <div class="bg-slate-800/50 border border-slate-700 rounded-lg p-2.5">
+            <div class="text-[9px] text-slate-500 uppercase tracking-wide">Đang xử lý</div>
+            <div class="text-lg font-extrabold text-amber-400" id="statShipPending">0</div>
+          </div>
+          <div class="bg-slate-800/50 border border-slate-700 rounded-lg p-2.5">
+            <div class="text-[9px] text-slate-500 uppercase tracking-wide">Hoàn tất</div>
+            <div class="text-lg font-extrabold text-emerald-400" id="statShipCompleted">0</div>
+          </div>
+          <div class="bg-slate-800/50 border border-slate-700 rounded-lg p-2.5">
+            <div class="text-[9px] text-slate-500 uppercase tracking-wide">Thất bại</div>
+            <div class="text-lg font-extrabold text-rose-400" id="statShipFailed">0</div>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="flex gap-2 mb-3">
+          <select id="filterStatus" onchange="refreshShipments()" class="flex-1 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-xs text-white focus:border-brand-500 outline-none">
+            <option value="">Tất cả trạng thái</option>
+            <option value="PENDING_SENDER">Chờ xác thực</option>
+            <option value="RESERVED">Đã giữ chỗ</option>
+            <option value="DEPOSITING">Đang gửi</option>
+            <option value="OCCUPIED">Có hàng</option>
+            <option value="PICKING">Đang lấy</option>
+            <option value="COMPLETED">Hoàn tất</option>
+            <option value="ABORTED">Hủy bỏ</option>
+            <option value="EXPIRED">Hết hạn</option>
+            <option value="CANCELLED">Đã hủy</option>
+          </select>
+          <select id="filterLocker" onchange="refreshShipments()" class="w-32 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-xs text-white focus:border-brand-500 outline-none">
+            <option value="">Tất cả tủ</option>
+            <option value="1">Tủ #1</option>
+            <option value="2">Tủ #2</option>
+            <option value="3">Tủ #3</option>
+          </select>
+        </div>
+
+        <!-- List -->
+        <div id="shipmentList" class="bg-slate-800/30 border border-slate-700 rounded-xl overflow-hidden">
+          <div class="p-4 text-center text-xs text-slate-500">Đang tải...</div>
+        </div>
+      </section>
             <!-- ═══ HARDWARE HEALTH ═══ -->
       <section class="mb-6">
         <div class="flex items-center justify-between mb-3">
@@ -510,6 +573,123 @@
       el.insertBefore(div, el.firstChild);
       while (el.children.length > 50) el.removeChild(el.lastChild);
     }
+        // ═══════════════════════════════════════════════════════
+    // SHIPMENT HISTORY
+    // ═══════════════════════════════════════════════════════
+    const SHIP_STATUS = {
+      'PENDING_SENDER': { label: 'Chờ xác thực', cls: 'bg-amber-500/10 text-amber-400 border-amber-500/30' },
+      'PENDING':        { label: 'Chờ xác thực', cls: 'bg-amber-500/10 text-amber-400 border-amber-500/30' },
+      'RESERVED':       { label: 'Đã giữ chỗ',   cls: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
+      'DEPOSITING':     { label: 'Đang gửi',     cls: 'bg-amber-500/10 text-amber-400 border-amber-500/30' },
+      'OCCUPIED':       { label: 'Có hàng',      cls: 'bg-rose-500/10 text-rose-400 border-rose-500/30' },
+      'PICKING':        { label: 'Đang lấy',     cls: 'bg-amber-500/10 text-amber-400 border-amber-500/30' },
+      'COMPLETED':      { label: 'Hoàn tất',     cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' },
+      'ABORTED':        { label: 'Hủy bỏ',       cls: 'bg-slate-500/10 text-slate-400 border-slate-500/30' },
+      'EXPIRED':        { label: 'Hết hạn',      cls: 'bg-slate-500/10 text-slate-400 border-slate-500/30' },
+      'CANCELLED':      { label: 'Đã hủy',       cls: 'bg-slate-500/10 text-slate-400 border-slate-500/30' },
+      'FAILED_VERIFY':  { label: 'Sai OTP',      cls: 'bg-rose-500/10 text-rose-400 border-rose-500/30' },
+      'UNKNOWN':        { label: 'Không rõ',     cls: 'bg-slate-500/10 text-slate-400 border-slate-500/30' },
+    };
+
+    function fmtRelativeTime(ts) {
+      if (!ts) return '—';
+      const d = new Date(ts);
+      const now = Date.now();
+      const diff = Math.floor((now - ts) / 1000);
+
+      if (diff < 60) return 'Vừa xong';
+      if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
+
+      const day = d.getDate();
+      const month = d.getMonth() + 1;
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      return `${day}/${month} ${hh}:${mm}`;
+    }
+
+    function fmtDuration(s) {
+      if (s == null) return '';
+      if (s < 60) return `${s}s`;
+      if (s < 3600) return `${Math.floor(s / 60)}m ${s % 60}s`;
+      return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+    }
+
+    async function refreshShipments() {
+      try {
+        const status = document.getElementById('filterStatus').value;
+        const locker = document.getElementById('filterLocker').value;
+
+        const qs = new URLSearchParams();
+        if (status) qs.set('status', status);
+        if (locker) qs.set('locker_id', locker);
+        qs.set('limit', '100');
+
+        const res = await fetch(`${API_BASE}/api/v1/admin/shipments?${qs}`);
+        const data = await res.json();
+
+        // Stats
+        document.getElementById('statShipTotal').textContent = data.stats.total;
+        document.getElementById('statShipToday').textContent = data.stats.today;
+        document.getElementById('statShipPending').textContent = data.stats.pending;
+        document.getElementById('statShipCompleted').textContent = data.stats.completed;
+        document.getElementById('statShipFailed').textContent = data.stats.failed;
+
+        const list = document.getElementById('shipmentList');
+
+        if (!data.shipments.length) {
+          list.innerHTML = `
+            <div class="p-6 text-center">
+              <i data-lucide="inbox" class="mx-auto text-slate-600 mb-2" style="width:32px;height:32px;"></i>
+              <div class="text-xs text-slate-500">Chưa có giao dịch nào</div>
+            </div>
+          `;
+          lucide.createIcons();
+          return;
+        }
+
+        list.innerHTML = `
+          <div class="divide-y divide-slate-700/50">
+            ${data.shipments.map(s => {
+              const st = SHIP_STATUS[s.status] || SHIP_STATUS['UNKNOWN'];
+              const isCompleted = s.status === 'COMPLETED';
+              const isActive = ['PENDING_SENDER', 'PENDING', 'RESERVED', 'DEPOSITING', 'OCCUPIED', 'PICKING'].includes(s.status);
+
+              return `
+                <div class="p-3 hover:bg-slate-800/40 transition flex items-center gap-3">
+                  <div class="w-9 h-9 rounded-lg ${isCompleted ? 'bg-emerald-500/10 border-emerald-500/30' : isActive ? 'bg-amber-500/10 border-amber-500/30' : 'bg-slate-500/10 border-slate-500/30'} border flex items-center justify-center shrink-0">
+                    <i data-lucide="${isCompleted ? 'check-circle-2' : isActive ? 'loader' : 'x-circle'}" class="${isCompleted ? 'text-emerald-400' : isActive ? 'text-amber-400' : 'text-slate-400'}" style="width:16px;height:16px;"></i>
+                  </div>
+
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-0.5 flex-wrap">
+                      <span class="font-mono text-xs font-bold text-white">${s.shipment_id}</span>
+                      <span class="text-[10px] text-slate-500">·</span>
+                      <span class="text-[10px] text-slate-400 font-mono">Tủ #${s.locker_id}</span>
+                      <span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${st.cls}">${st.label}</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500 font-mono truncate">
+                      ${s.sender_phone_masked} → ${s.recipient_phone_masked}
+                    </div>
+                  </div>
+
+                  <div class="text-right shrink-0">
+                    <div class="text-[10px] text-slate-400 font-mono">${fmtRelativeTime(s.created_at)}</div>
+                    ${s.duration_s ? `<div class="text-[9px] text-emerald-500 font-mono mt-0.5">⏱ ${fmtDuration(s.duration_s)}</div>` : ''}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+
+        lucide.createIcons();
+      } catch (e) {
+        console.error('[SHIP] Error:', e);
+        document.getElementById('shipmentList').innerHTML =
+          '<div class="p-4 text-center text-xs text-rose-400">Không tải được dữ liệu</div>';
+      }
+    }
     // ═══════════════════════════════════════════════════════
     // HARDWARE HEALTH PANEL
     // ═══════════════════════════════════════════════════════
@@ -651,13 +831,19 @@
       }
     }
 
-    // Khởi động poll hardware khi vào dashboard
+        // Khởi động poll hardware + shipments khi vào dashboard
+    let shipmentTimer = null;
+
     function startHardwarePoll() {
       if (hardwareTimer) clearInterval(hardwareTimer);
-      refreshHardware();
-      hardwareTimer = setInterval(refreshHardware, 5000);
-    }
+      if (shipmentTimer) clearInterval(shipmentTimer);
 
+      refreshHardware();
+      refreshShipments();
+
+      hardwareTimer = setInterval(refreshHardware, 5000);
+      shipmentTimer = setInterval(refreshShipments, 8000);  // 8s cho shipments
+    }
     // Hook vào showDashboard
     const origShowDashboard = showDashboard;
     window.showDashboard = function() {
@@ -666,9 +852,10 @@
     };
 
     // Hook vào logout để dừng poll
-    const origHandleLogout = handleLogout;
+        const origHandleLogout = handleLogout;
     window.handleLogout = function() {
       if (hardwareTimer) clearInterval(hardwareTimer);
+      if (shipmentTimer) clearInterval(shipmentTimer);
       origHandleLogout();
     };
     (async () => {
