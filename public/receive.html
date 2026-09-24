@@ -6,10 +6,8 @@
   <meta name="theme-color" content="#10B981">
   <title>Nhận hàng — Smart Box</title>
 
+  <link rel="stylesheet" href="/assets/premium.css">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
 
   <script>
@@ -17,7 +15,7 @@
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Inter', 'system-ui', 'sans-serif'],
+            sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
             mono: ['JetBrains Mono', 'monospace'],
           },
           colors: {
@@ -40,25 +38,21 @@
     }
     .otp-input:focus { border-color: #10B981; box-shadow: 0 0 0 3px rgba(16,185,129,.15); }
     .otp-input.filled { border-color: #10B981; background: #ECFDF5; }
-    @keyframes slideIn { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
-    .slide-in { animation: slideIn .3s ease-out; }
-    @keyframes radar { 0% { transform: scale(0.8); opacity: 0.8; } 100% { transform: scale(2.4); opacity: 0; } }
-    .radar-ring { animation: radar 1.8s ease-out infinite; }
   </style>
 </head>
 
 <body class="font-sans bg-gradient-to-b from-slate-50 via-white to-slate-50 min-h-screen antialiased">
 
-  <!-- HEADER -->
   <header class="sticky top-0 z-50 glass border-b border-slate-200/60">
     <div class="max-w-md mx-auto px-5 h-14 flex items-center gap-3">
       <button onclick="goBack()" class="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center transition active:scale-95">
         <i data-lucide="arrow-left" class="text-slate-700" style="width:20px;height:20px;"></i>
       </button>
       <div class="flex-1">
-        <div class="font-bold text-slate-900 text-sm leading-none">Nhận hàng</div>
+        <div class="font-extrabold text-slate-900 text-sm leading-none tracking-tight">Nhận hàng</div>
         <div class="text-[10px] text-slate-500 mt-0.5" id="stepLabel">Bước 1/2</div>
       </div>
+      <img src="/assets/uth-logo.png" alt="UTH" class="logo-uth h-6 w-auto opacity-80">
     </div>
     <div class="h-1 bg-slate-100">
       <div id="progressBar" class="h-full bg-gradient-to-r from-brand-500 to-brand-700 transition-all duration-500" style="width: 50%;"></div>
@@ -67,10 +61,9 @@
 
   <main class="max-w-md mx-auto px-5 pt-6 pb-12">
 
-       <!-- STEP 1 -->
-    <section id="step1" class="slide-in">
+    <!-- STEP 1 -->
+    <section id="step1" class="animate-slide-up">
 
-      <!-- Locker badge từ QR -->
       <div id="lockerBadge" class="hidden mb-5 p-4 rounded-2xl bg-gradient-to-r from-brand-50 to-emerald-50 border-2 border-brand-200">
         <div class="flex items-center gap-3">
           <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-lg shadow-brand-500/30 shrink-0">
@@ -87,7 +80,7 @@
         <div class="w-14 h-14 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-center mb-4">
           <i data-lucide="package-open" class="text-brand-600" style="width:26px;height:26px;"></i>
         </div>
-        <h2 class="text-xl font-extrabold text-slate-900 mb-1">Lấy hàng của bạn</h2>
+        <h2 class="text-xl font-extrabold text-slate-900 mb-1 tracking-tight">Lấy hàng của bạn</h2>
         <p class="text-xs text-slate-500">Nhập SĐT và mã OTP từ tin nhắn</p>
       </div>
 
@@ -117,7 +110,7 @@
       <div id="step1Error" class="hidden mb-4 px-3.5 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium"></div>
 
       <button id="btn1" onclick="submitReceive()"
-              class="w-full py-4 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 hover:from-brand-600 hover:to-brand-700 active:scale-[0.98] transition font-bold text-white text-sm shadow-lg shadow-brand-500/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+              class="btn-shine w-full py-4 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 hover:from-brand-600 hover:to-brand-700 transition font-bold text-white text-sm shadow-lg shadow-brand-500/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
         <i data-lucide="unlock" style="width:16px;height:16px;"></i>
         Mở tủ
       </button>
@@ -146,14 +139,14 @@
             <i data-lucide="package-open" class="text-white" style="width:44px;height:44px;"></i>
           </div>
         </div>
-        <h2 class="text-xl font-extrabold text-slate-900 mb-1">Tủ đang mở</h2>
+        <h2 class="text-xl font-extrabold text-slate-900 mb-1 tracking-tight">Tủ đang mở</h2>
         <p class="text-sm text-slate-500">
           Lấy hàng ra khỏi <span class="font-bold text-brand-600" id="pickupLocker">tủ</span><br>
           rồi <span class="font-bold text-slate-700">đóng cửa thật chặt</span>
         </p>
       </div>
 
-      <div class="bg-white rounded-2xl border border-slate-200 p-4 mb-5 shadow-sm">
+      <div class="card-premium p-4 mb-5">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0">
             <i data-lucide="loader-2" class="text-amber-600 animate-spin" style="width:20px;height:20px;"></i>
@@ -180,14 +173,16 @@
     <!-- STEP 3 -->
     <section id="step3" class="hidden">
       <div class="text-center">
-        <div class="w-24 h-24 mx-auto mb-5 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-2xl shadow-emerald-500/40">
-          <i data-lucide="check" class="text-white" style="width:44px;height:44px;" stroke-width="3"></i>
+        <div class="w-24 h-24 mx-auto mb-5 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-2xl shadow-emerald-500/40 animate-scale-in">
+          <svg class="checkmark-draw" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
         </div>
 
-        <h2 class="text-2xl font-extrabold text-slate-900 mb-1">Đã lấy hàng!</h2>
+        <h2 class="text-2xl font-extrabold text-slate-900 mb-1 tracking-tight">Đã lấy hàng!</h2>
         <p class="text-xs text-slate-500 mb-6">Cảm ơn bạn đã sử dụng Smart Box</p>
 
-        <div class="bg-white rounded-2xl border border-slate-200 p-5 mb-5 shadow-sm">
+        <div class="card-premium p-5 mb-5">
           <div class="flex items-center gap-3">
             <div class="w-12 h-12 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center shrink-0">
               <i data-lucide="check-circle-2" class="text-brand-600" style="width:22px;height:22px;"></i>
@@ -199,21 +194,26 @@
           </div>
         </div>
 
-        <button onclick="location.href='/'" class="w-full py-4 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 hover:from-brand-600 hover:to-brand-700 active:scale-[0.98] transition font-bold text-white text-sm shadow-lg shadow-brand-500/30">
+        <button onclick="location.href='/'" class="btn-shine w-full py-4 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 hover:from-brand-600 hover:to-brand-700 font-bold text-white text-sm shadow-lg shadow-brand-500/30">
           Về trang chủ
         </button>
+
+        <div class="mt-8 pt-6 border-t border-slate-200">
+          <img src="/assets/uth-logo.png" alt="UTH" class="logo-uth h-10 w-auto mx-auto opacity-70">
+          <div class="text-[10px] text-slate-400 mt-2">Smart Box IoT • ĐH GTVT TP.HCM</div>
+        </div>
       </div>
     </section>
 
   </main>
 
+  <script src="/assets/toast.js"></script>
   <script>
     lucide.createIcons();
 
     const API_BASE = window.location.origin;
     const PHONE_FMT = v => v.replace(/\D/g, '').replace(/(\d{3,4})(\d{3})(\d{3,4})/, '$1 $2 $3').trim();
 
-    // ─── QR scan: lấy locker từ URL ───
     const urlParams = new URLSearchParams(window.location.search);
     const lockerFromQR = urlParams.get('locker');
     const targetLockerFromQR = lockerFromQR && ['1','2','3'].includes(lockerFromQR)
@@ -233,7 +233,12 @@
       state.step = n;
       for (let i = 1; i <= 3; i++) {
         document.getElementById('step' + i).classList.toggle('hidden', i !== n);
-        if (i === n) document.getElementById('step' + n).classList.add('slide-in');
+        if (i === n) {
+          const el = document.getElementById('step' + n);
+          el.classList.remove('animate-slide-up');
+          void el.offsetWidth;
+          el.classList.add('animate-slide-up');
+        }
       }
       document.getElementById('stepLabel').textContent = `Bước ${n}/2`;
       document.getElementById('progressBar').style.width = n === 1 ? '50%' : '100%';
@@ -308,26 +313,30 @@
           btn.innerHTML = '<i data-lucide="unlock" style="width:16px;height:16px;"></i> Mở tủ';
           lucide.createIcons();
           clearOtp();
+          if (window.showToast) showToast(data.message || 'Mã OTP không đúng hoặc đã hết hạn', 'error');
           return showErr(errEl, data.message || 'Mã OTP không đúng hoặc đã hết hạn');
         }
 
-                state.recipientPhone = phone;
+        state.recipientPhone = phone;
         state.lockerId = data.locker_id;
 
-        // Cảnh báo nếu user quét QR tủ khác với tủ có đơn
         if (targetLockerFromQR && targetLockerFromQR !== data.locker_id) {
           const ok = confirm(
             `⚠️ Đơn hàng của bạn ở TỦ #${data.locker_id}\n` +
             `Nhưng bạn đang đứng ở TỦ #${targetLockerFromQR}.\n\n` +
             `Vui lòng di chuyển đến TỦ #${data.locker_id} để lấy hàng.`
           );
-          if (!ok) return;
+          if (!ok) {
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="unlock" style="width:16px;height:16px;"></i> Mở tủ';
+            lucide.createIcons();
+            return;
+          }
         }
 
         document.getElementById('pickupLocker').textContent = `tủ #${data.locker_id}`;
         showStep(2);
         startPollingPickup();
-
       } catch (e) {
         btn.disabled = false;
         btn.innerHTML = '<i data-lucide="unlock" style="width:16px;height:16px;"></i> Mở tủ';
@@ -361,6 +370,8 @@
             if (state.pollInterval) clearInterval(state.pollInterval);
             if (state.pickupTimeout) clearTimeout(state.pickupTimeout);
             showStep(3);
+            if (window.fireConfetti) fireConfetti(60);
+            if (window.showToast) showToast('Đã lấy hàng thành công!', 'success');
           }
         } catch (e) {}
       }, 2000);
@@ -377,7 +388,7 @@
             Không phát hiện cửa tủ đóng sau 90 giây.<br>
             Vui lòng kiểm tra lại hoặc liên hệ hỗ trợ.
           </p>
-          <button onclick="location.href='/'" class="w-full py-4 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 font-bold text-white text-sm">
+          <button onclick="location.href='/'" class="btn-shine w-full py-4 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 font-bold text-white text-sm">
             Về trang chủ
           </button>
         </div>
@@ -398,11 +409,13 @@
       const btn = document.getElementById('btnResendRecipient');
 
       if (phone.length < 10) {
-        return alert('Vui lòng nhập SĐT trước khi gửi lại OTP');
+        if (window.showToast) showToast('Vui lòng nhập SĐT trước khi gửi lại OTP', 'warning');
+        return;
       }
 
       if (state.resendCount >= state.maxResend) {
-        return alert('Bạn đã gửi lại quá nhiều lần. Vui lòng liên hệ người gửi.');
+        if (window.showToast) showToast('Bạn đã gửi lại quá nhiều lần.', 'warning');
+        return;
       }
 
       btn.disabled = true;
@@ -418,26 +431,26 @@
         const data = await res.json();
 
         if (!res.ok) {
-          alert(data.message || 'Không gửi lại được OTP');
+          if (window.showToast) showToast(data.message || 'Không gửi lại được OTP', 'error');
         } else {
           state.resendCount++;
           clearOtp();
           document.getElementById('step1Error').classList.add('hidden');
-          alert('Đã gửi lại OTP. Vui lòng kiểm tra tin nhắn.');
+          if (window.showToast) showToast('Đã gửi lại OTP. Vui lòng kiểm tra tin nhắn.', 'success');
         }
       } catch (e) {
-        alert('Lỗi kết nối');
+        if (window.showToast) showToast('Lỗi kết nối', 'error');
       }
 
       btn.disabled = false;
       btn.innerHTML = `<i data-lucide="refresh-cw" style="width:13px;height:13px;"></i> Không nhận được OTP? Gửi lại (${state.maxResend - state.resendCount})`;
       lucide.createIcons();
-        // ─── Hiện badge nếu có ?locker=X ───
+    }
+
     if (targetLockerFromQR) {
       document.getElementById('lockerBadge').classList.remove('hidden');
       document.getElementById('lockerBadgeText').textContent = `Tủ #${targetLockerFromQR}`;
       lucide.createIcons();
-    }
     }
   </script>
 

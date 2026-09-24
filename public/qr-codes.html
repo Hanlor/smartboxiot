@@ -3,30 +3,42 @@
 <head>
   <meta charset="UTF-8">
   <title>QR Codes — Smart Box</title>
+  <link rel="stylesheet" href="/assets/premium.css">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
   <style>
-    body { font-family: 'Inter', sans-serif; }
-    .mono { font-family: 'JetBrains Mono', monospace; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
     @media print {
       .no-print { display: none !important; }
       body { background: white !important; padding: 0 !important; }
       .qr-card { page-break-inside: avoid; box-shadow: none !important; }
+      #qrContainer { gap: 0 !important; }
+      .qr-card { margin: 20mm auto !important; max-width: 100mm; }
     }
   </style>
 </head>
 <body class="bg-slate-100 min-h-screen p-8">
 
-  <!-- Header -->
   <div class="max-w-5xl mx-auto mb-8 no-print">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-extrabold text-slate-900">QR Codes — Smart Box</h1>
-        <p class="text-sm text-slate-500 mt-1">
-          In trang này và dán lên 3 tủ. QR được sinh từ <b>server</b> (SVG vector — nét căng khi in).
-        </p>
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">QR Codes — Smart Box</h1>
+        <p class="text-sm text-slate-500 mt-1">In trang này và dán lên 3 tủ. QR được sinh từ <b>server</b> (SVG vector — nét căng khi in).</p>
       </div>
-      <button onclick="window.print()" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-lg shadow-indigo-600/30 transition">
+      <button onclick="window.print()" class="btn-shine px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-lg shadow-indigo-600/30">
         🖨️ In trang này
       </button>
     </div>
@@ -36,12 +48,12 @@
     </div>
   </div>
 
-  <!-- QR Cards -->
   <div class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6" id="qrContainer"></div>
 
-  <!-- Footer -->
   <div class="max-w-5xl mx-auto mt-8 text-center text-xs text-slate-400 no-print">
-    Smart Box IoT System • QR Generator (Server-side)
+    <img src="/assets/uth-logo.png" alt="UTH" class="logo-uth h-10 w-auto mx-auto mb-3 opacity-80">
+    <div>Smart Box IoT System • Trường Đại học Giao thông vận tải TP.HCM</div>
+    <div class="mt-1">QR Generator (Server-side) • © 2026</div>
   </div>
 
   <script>
@@ -60,9 +72,10 @@
       const qrApiUrl = `${BASE_URL}/api/v1/qr?data=${encodeURIComponent(qrTargetUrl)}&size=400&format=svg`;
 
       const card = document.createElement('div');
-      card.className = 'qr-card bg-white rounded-2xl shadow-xl p-6 border-4 border-slate-200';
+      card.className = 'qr-card card-premium p-6 border-4 border-slate-200';
       card.innerHTML = `
         <div class="text-center mb-4 pb-4 border-b-2 border-dashed border-slate-200">
+          <img src="/assets/uth-logo.png" alt="UTH" class="logo-uth h-10 w-auto mx-auto mb-2">
           <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-200">
             <span class="w-2 h-2 rounded-full bg-${L.color}-500"></span>
             <span class="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Smart Box</span>
@@ -78,7 +91,7 @@
         </div>
 
         <div class="text-center">
-          <div class="text-3xl font-extrabold text-slate-900 mb-1">TỦ #${L.id}</div>
+          <div class="text-3xl font-extrabold text-slate-900 mb-1 tracking-tight">TỦ #${L.id}</div>
           <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-${L.color}-50 border border-${L.color}-200">
             <span class="text-[11px] font-bold text-${L.color}-700">KÍCH THƯỚC ${L.size}</span>
           </div>
@@ -96,7 +109,7 @@
         </div>
 
         <div class="mt-3 text-center">
-          <div class="text-[9px] text-slate-400 mono break-all">${qrTargetUrl}</div>
+          <div class="text-[9px] text-slate-400 font-mono break-all">${qrTargetUrl}</div>
         </div>
       `;
       container.appendChild(card);
