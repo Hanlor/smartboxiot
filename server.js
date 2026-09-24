@@ -243,38 +243,75 @@ function publicLockerView(locker) {
  * Env: SMS_GATEWAY_URL, SMS_GATEWAY_USER, SMS_GATEWAY_PASS
  */
 async function sendSMSViaAndroid(phone, otp) {
-  const url      = process.env.SMS_GATEWAY_URL  || 'https://api.sms-gate.app/3rdparty/v1/messages';
-  const username = process.env.SMS_GATEWAY_USER || '-B-12Y';
-  const password = process.env.SMS_GATEWAY_PASS || 'xme1yle6eczm2t';
-  const authHeader = 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64');
+  const SMS_GATEWAY_URL = process.env.SMS_GATEWAY_URL || 'https://api.sms-gate.app/3rdparty/v1/messages';
+  const USERNAME = process.env.SMS_GATEWAY_USER || '-B-12Y';
+  const PASSWORD = process.env.SMS_GATEWAY_PASS || 'xme1yle6eczm2t';
 
-  // phone PHẢI đã ở dạng +84... (đã normalize ở tầng controller)
+  const authHeader = 'Basic ' + Buffer.from(`${USERNAME}:${PASSWORD}`).toString('base64');
+
+  // Backward-compatible: nếu là OTP 6 số → dùng template cũ
+  // Nếu là message đầy đủ → gửi raw
+  const messageText = /^\d{6}$/.test(String(otp).trim())
+    ? `[SMARTBOX] Ma xac thuc: ${otp}. Hieu luc 5 phut. Hotline: 1900 6868`
+    : String(otp);
+
   const payload = {
     phoneNumbers: [phone],
-    textMessage: {
-      text: `SmartBox: Ma OTP mo tu o cua ban la ${otp}. Ma co hieu luc trong 5 phut.`,
-    },
+    textMessage: { text: messageText },
   };
 
   try {
-    const response = await axios.post(url, payload, {
+    const response = await axios.post(SMS_GATEWAY_URL, payload, {
       timeout: 10000,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader,
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': authHeader },
     });
-
-    console.log(`📱 [SMS SUCCESS] OTP=${otp} -> ${phone} (HTTP ${response.status})`);
+    console.log(`📱 [SMS] → ${phone} | "${messageText.substring(0, 60)}..."`);
     return { sent: true, status: response.status };
   } catch (error) {
     const detail = error.response
       ? `HTTP ${error.response.status} - ${JSON.stringify(error.response.data)}`
       : error.message;
-
-    console.error(`❌ [SMS FAILED] ${phone}: ${detail}`);
+    console.error(`❌ [SMS] Failed to ${phone}: ${detail}`);
     return { sent: false, error: detail };
   }
+}
+
+/**
+ * SMS Templates — xây message chuyên nghiệp
+ */
+function buildSenderOtpMessage(otp, shipmentId, lockerId) {
+  const size = { 1: 'S', 2: 'M', 3: 'L' }[lockerId] || '?';
+  return `[SMARTBOX] Ma xac thuc GUI HANG: ${otp}\n` +
+         `Don: ${shipmentId} | Tu: #${lockerId} (size ${size})\n` +
+         `Hieu luc: 5 phut\n` +
+         `Hotline: 1900 6868`;
+}
+
+function buildRecipientOtpMessage(otp, senderPhone, lockerId) {
+  // Mask SĐT sender: +84912345678 → 0912***678
+  const masked = (senderPhone || '')
+    .replace(/^\+84/, '0')
+    .replace(/(\d{4})\d+(\d{3})/, '$1***$2');
+
+  return `[SMARTBOX] Ban co 1 kien hang tu ${masked}.\n` +
+         `Vi tri: Tu #${lockerId} - Smart Box\n` +
+         `Ma lay hang: ${otp}\n` +
+         `Hieu luc: 5 phut. Vui long den nhan truoc khi het han.`;
+}
+
+function buildPickupConfirmMessage(shipmentId, lockerId) {
+  const now = new Date();
+  const dateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')} ` +
+                  `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  return `[SMARTBOX] Don ${shipmentId} da duoc nguoi nhan lay thanh cong!\n` +
+         `Thoi gian: ${dateStr}\n` +
+         `Cam on ban da su dung dich vu.`;
+}
+
+function buildReminderMessage(otp, lockerId, minutesLeft) {
+  return `[SMARTBOX] Nhac nho: Kien hang tai Tu #${lockerId} chua duoc lay.\n` +
+         `Ma OTP: ${otp} (con ${minutesLeft} phut)\n` +
+         `Vui long den ngay!`;
 }
 
 function mapFromEntries(entries) {
@@ -498,7 +535,11 @@ app.locals.helpers = {
   getOtpSecurity,
   invalidateOtpsForPhone,
   padLcdLine,
-  normalizePhoneVN, 
+  normalizePhoneVN,
+  buildSenderOtpMessage,        // <-- THÊM
+  buildRecipientOtpMessage,     // <-- THÊM
+  buildPickupConfirmMessage,    // <-- THÊM
+  buildReminderMessage,         // <-- THÊM 
 };
 // ═══════════════════════════════════════════════════════════
 // QR CODE GENERATOR (server-side, không phụ thuộc client)

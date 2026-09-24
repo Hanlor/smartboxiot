@@ -193,8 +193,9 @@ async function createShipment(req, res) {
 
   helpers.persistState();
 
-  // Gửi SMS bất đồng bộ (không block response)
-  const smsResult = await helpers.sendSMSViaAndroid(senderIntl, senderOtp);
+   // Gửi SMS với template chuyên nghiệp
+  const senderMsg = helpers.buildSenderOtpMessage(senderOtp, shipment_id, lockerId);
+  const smsResult = await helpers.sendSMSViaAndroid(senderIntl, senderMsg);
 
   return res.status(200).json({
     success: true,
@@ -691,12 +692,17 @@ async function updateTelemetry(req, res) {
 
     let smsResult = { sent: false, error: 'no recipient phone' };
 
-    if (locker.recipient_phone) {
+     if (locker.recipient_phone) {
       const security = helpers.getOtpSecurity(locker.recipient_phone);
       security.failed_attempts = 0;
       security.locked_until = 0;
 
-      smsResult = await helpers.sendSMSViaAndroid(locker.recipient_phone, otp);
+      const recipientMsg = helpers.buildRecipientOtpMessage(
+        otp,
+        locker.sender_phone,
+        locker.locker_id
+      );
+      smsResult = await helpers.sendSMSViaAndroid(locker.recipient_phone, recipientMsg);
     }
 
     helpers.persistState();
@@ -731,16 +737,21 @@ async function updateTelemetry(req, res) {
     });
   }
 
-  // PICKING -> AVAILABLE
+  // ── PICKING -> AVAILABLE (đóng cửa + hết hàng) ──
   if (locker.status === S.PICKING && locker.door_closed && !locker.has_item) {
-    if (locker.shipment_id && db.shipments.has(locker.shipment_id)) {
-      const shipment = db.shipments.get(locker.shipment_id);
+    // ✅ Lấy info TRƯỚC khi clear locker
+    const senderPhone = locker.sender_phone;
+    const shipmentId = locker.shipment_id;
+    const lockerId = locker.locker_id;
+
+    if (shipmentId && db.shipments.has(shipmentId)) {
+      const shipment = db.shipments.get(shipmentId);
       shipment.completed_at = Date.now();
       shipment.status = 'COMPLETED';
     }
 
     for (const [key, record] of db.otps.entries()) {
-      if (record.locker_id === locker.locker_id) {
+      if (record.locker_id === lockerId) {
         db.otps.delete(key);
       }
     }
@@ -749,13 +760,25 @@ async function updateTelemetry(req, res) {
     helpers.applyStatus(locker, S.AVAILABLE);
     helpers.persistState();
 
+    // 🆕 Gửi SMS xác nhận cho NGƯỜI GỬI
+    let smsConfirmSent = false;
+    if (senderPhone && shipmentId) {
+      try {
+        const confirmMsg = helpers.buildPickupConfirmMessage(shipmentId, lockerId);
+        const r = await helpers.sendSMSViaAndroid(senderPhone, confirmMsg);
+        smsConfirmSent = r.sent;
+      } catch (err) {
+        console.error('[SMS CONFIRM] Failed:', err.message);
+      }
+    }
+
     return res.status(200).json({
       success: true,
       current_status: locker.status,
       led_color: locker.led_color,
+      sender_notified: smsConfirmSent,
     });
   }
-
   // AVAILABLE + có hàng => lỗi cảm biến
   if (locker.status === S.AVAILABLE && locker.door_closed && locker.has_item) {
     helpers.applyStatus(locker, S.MAINTENANCE);
