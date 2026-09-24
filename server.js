@@ -257,7 +257,7 @@ async function sendSMSViaAndroid(phone, otp) {
   // Backward-compatible: nếu là OTP 6 số → dùng template cũ
   // Nếu là message đầy đủ → gửi raw
   const messageText = /^\d{6}$/.test(String(otp).trim())
-    ? `[SMARTBOX] Ma xac thuc: ${otp}. Hieu luc 5 phut. Hotline: 1900 6868`
+    ? `[SMARTBOX] Ma xac thuc: ${otp}. Hieu luc 5 phut. Hotline: 0356297703(KHUYEN)`
     : String(otp);
 
   const payload = {
@@ -288,8 +288,8 @@ function buildSenderOtpMessage(otp, shipmentId, lockerId) {
   const size = { 1: 'S', 2: 'M', 3: 'L' }[lockerId] || '?';
   return `[SMARTBOX] Ma xac thuc GUI HANG: ${otp}\n` +
          `Don: ${shipmentId} | Tu: #${lockerId} (size ${size})\n` +
-         `Hieu luc: 5 phut\n` +
-         `Hotline: 1900 6868`;
+         `Ma co hieu luc trong 5 phut\n` +
+         `Hotline: 0356 297 703 (anh Khuyen)`;
 }
 
 function buildRecipientOtpMessage(otp, senderPhone, lockerId) {
@@ -301,7 +301,8 @@ function buildRecipientOtpMessage(otp, senderPhone, lockerId) {
   return `[SMARTBOX] Ban co 1 kien hang tu ${masked}.\n` +
          `Vi tri: Tu #${lockerId} - Smart Box\n` +
          `Ma lay hang: ${otp}\n` +
-         `Hieu luc: 5 phut. Vui long den nhan truoc khi het han.`;
+         `Ma co hieu luc trong 5 phut\n` +
+         `Hotline: 0356 297 703 (anh Khuyen)`;
 }
 
 function buildPickupConfirmMessage(shipmentId, lockerId) {
