@@ -313,3 +313,9 @@ input:focus, button:focus-visible, textarea:focus {
     transition-duration: 0.01ms !important;
   }
 }
+.text-gradient-amber {
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

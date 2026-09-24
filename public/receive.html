@@ -194,6 +194,18 @@
           </div>
         </div>
 
+                <div class="card-premium p-4 mb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shadow-lg shadow-amber-500/30 shrink-0">
+              <i data-lucide="sparkles" class="text-white" style="width:18px;height:18px;"></i>
+            </div>
+            <div class="flex-1 text-left">
+              <div class="text-xs font-bold text-slate-900">+10 điểm thưởng!</div>
+              <div class="text-[11px] text-slate-500 mt-0.5" id="pointsAfterReceive">Bạn có 0 điểm</div>
+            </div>
+          </div>
+        </div>
+
         <button onclick="location.href='/'" class="btn-shine w-full py-4 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 hover:from-brand-600 hover:to-brand-700 font-bold text-white text-sm shadow-lg shadow-brand-500/30">
           Về trang chủ
         </button>
@@ -208,6 +220,7 @@
   </main>
 
   <script src="/assets/toast.js"></script>
+  <script src="/assets/gamification.js"></script>   <!-- THÊM DÒNG NÀY -->
   <script>
     lucide.createIcons();
 
@@ -373,6 +386,14 @@
             if (window.fireConfetti) fireConfetti(60);
             if (window.showToast) showToast('Đã lấy hàng thành công!', 'success');
             if (window.notifyUser) notifyUser();
+                        // ═══ GAMIFICATION: cập nhật điểm hiển thị ═══
+            setTimeout(() => {
+              if (window.Gamification) {
+                const p = Gamification.getState().points;
+                const el = document.getElementById('pointsAfterReceive');
+                if (el) el.textContent = `Bạn có ${p} điểm • 1 lượt quay mới`;
+              }
+            }, 200);
 
             // ═══ LƯU LỊCH SỬ ═══
             if (window.saveHistory) {
@@ -383,6 +404,10 @@
                 at: Date.now(),
                 status: 'success',
               });
+            }
+                        // ═══ GAMIFICATION: +10 điểm + 1 lượt quay ═══
+            if (window.Gamification) {
+              Gamification.addTransaction('receive');
             }
           }
         } catch (e) {}

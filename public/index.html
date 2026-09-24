@@ -45,9 +45,15 @@
           <div class="text-[10px] text-slate-500 leading-none mt-0.5">Tủ gửi đồ thông minh</div>
         </div>
       </div>
-      <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-breathe"></span>
-        <span class="text-[10px] font-semibold text-emerald-700" id="statusText">Online</span>
+            <div class="flex items-center gap-2">
+        <button onclick="location.href='#rewards'" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 hover:border-amber-300 transition">
+          <i data-lucide="sparkles" class="text-amber-500" style="width:12px;height:12px;"></i>
+          <span class="text-[11px] font-bold text-amber-700" id="headerPoints">0 điểm</span>
+        </button>
+        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-breathe"></span>
+          <span class="text-[10px] font-semibold text-emerald-700" id="statusText">Online</span>
+        </div>
       </div>
     </div>
   </header>
@@ -157,7 +163,7 @@
 
       <!-- Live Lockers Preview -->
     <section class="mt-8">
-      ... (giữ nguyên)
+     
     </section>
 
     <!-- ═══ LỊCH SỬ ═══ -->
@@ -174,7 +180,64 @@
       </div>
       <div id="historyList" class="space-y-2"></div>
     </section>
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- REWARDS & LOYALTY                                       -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section id="rewards" class="mt-8">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+          <i data-lucide="sparkles" class="text-amber-500" style="width:14px;height:14px;"></i>
+          Điểm thưởng & Ưu đãi
+        </h2>
+      </div>
 
+      <!-- Card điểm -->
+      <div class="card-premium p-5 mb-3">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Điểm hiện tại</div>
+            <div class="text-3xl font-extrabold text-gradient-amber" id="rewardPoints">0</div>
+          </div>
+          <div class="text-right">
+            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full" id="levelBadge">
+              <i data-lucide="award" style="width:12px;height:12px;"></i>
+              <span class="text-[11px] font-bold" id="levelName">Bronze</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress bar tới milestone -->
+        <div id="milestoneBox">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] text-slate-500">Tiến độ tới phần thưởng</span>
+            <span class="text-[11px] font-bold text-slate-700" id="milestoneText">50 điểm nữa</span>
+          </div>
+          <div class="h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+            <div id="milestoneBar" class="h-full bg-gradient-to-r from-amber-400 to-yellow-500 transition-all duration-500" style="width: 0%;"></div>
+          </div>
+          <div class="text-[10px] text-slate-500 flex items-center gap-1">
+            <i data-lucide="gift" style="width:10px;height:10px;"></i>
+            <span>Phần thưởng: <b id="milestoneReward">Giảm 50% lần gửi tiếp</b></span>
+          </div>
+        </div>
+
+        <!-- Spin tickets -->
+        <div id="spinBox" class="hidden mt-4 pt-4 border-t border-slate-100">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30 shrink-0 animate-float">
+              <i data-lucide="gift" class="text-white" style="width:22px;height:22px;"></i>
+            </div>
+            <div class="flex-1">
+              <div class="text-xs font-bold text-slate-900">Bạn có <span id="ticketCount">0</span> lượt quay!</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">Quay để nhận thêm điểm</div>
+            </div>
+            <button onclick="openSpinWheel()" class="btn-shine px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold shadow-lg shadow-purple-500/30">
+              Quay ngay
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <!-- FOOTER -->
@@ -190,6 +253,7 @@
   </footer>
 
   <script src="/assets/toast.js"></script>
+  <script src="/assets/gamification.js"></script>   <!-- THÊM DÒNG NÀY -->
   <script>
     lucide.createIcons();
 
@@ -324,7 +388,220 @@
 
     refreshLockers();
     setInterval(refreshLockers, 3000);
-  </script>
+      // ═══════════════════════════════════════════════════════
+    // GAMIFICATION UI
+    // ═══════════════════════════════════════════════════════
+    function renderRewards() {
+      if (!window.Gamification) return;
+      const state = Gamification.getState();
+      const level = Gamification.getLevel();
+      const milestone = Gamification.getNextMilestone();
 
+      document.getElementById('headerPoints').textContent = `${state.points} điểm`;
+      document.getElementById('rewardPoints').textContent = state.points;
+      document.getElementById('levelName').textContent = level.name;
+
+      const badge = document.getElementById('levelBadge');
+      badge.style.background = level.color + '15';
+      badge.style.border = `1px solid ${level.color}40`;
+      badge.style.color = level.color;
+
+      if (milestone) {
+        document.getElementById('milestoneText').textContent = `${milestone.remaining} điểm nữa`;
+        document.getElementById('milestoneReward').textContent = milestone.reward;
+        const total = milestone.at;
+        const current = total - milestone.remaining;
+        document.getElementById('milestoneBar').style.width = (current / total * 100) + '%';
+      } else {
+        document.getElementById('milestoneText').textContent = 'Đã đạt mốc cao nhất!';
+        document.getElementById('milestoneBar').style.width = '100%';
+      }
+
+      // Spin box
+      const spinBox = document.getElementById('spinBox');
+      if (state.spinTickets > 0) {
+        spinBox.classList.remove('hidden');
+        document.getElementById('ticketCount').textContent = state.spinTickets;
+      } else {
+        spinBox.classList.add('hidden');
+      }
+    }
+
+    // ═══ WHEEL ═══
+    let wheelRotation = 0;
+    let isSpinning = false;
+
+    function drawWheel() {
+      const canvas = document.getElementById('wheelCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const prizes = Gamification.getPrizes();
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const radius = cx - 10;
+      const sliceAngle = (Math.PI * 2) / prizes.length;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      prizes.forEach((p, i) => {
+        const startAngle = i * sliceAngle - Math.PI / 2;
+        const endAngle = startAngle + sliceAngle;
+
+        // Slice
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, radius, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fillStyle = p.color;
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // Text
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(startAngle + sliceAngle / 2);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 28px "Plus Jakarta Sans", sans-serif';
+        ctx.fillText(p.label, radius - 30, 10);
+        ctx.restore();
+      });
+
+      // Center circle
+      ctx.beginPath();
+      ctx.arc(cx, cy, 60, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+    }
+
+    function openSpinWheel() {
+      const state = Gamification.getState();
+      if (state.spinTickets <= 0) {
+        if (window.showToast) showToast('Bạn không có lượt quay nào', 'warning');
+        return;
+      }
+      document.getElementById('spinModal').classList.remove('hidden');
+      document.getElementById('modalTicketCount').textContent = state.spinTickets;
+      document.getElementById('spinResult').classList.add('hidden');
+      document.getElementById('spinBtn').style.display = '';
+      drawWheel();
+    }
+
+    function closeSpinWheel() {
+      document.getElementById('spinModal').classList.add('hidden');
+    }
+
+    function doSpin() {
+      if (isSpinning) return;
+      const state = Gamification.getState();
+      if (state.spinTickets <= 0) return;
+
+      isSpinning = true;
+      document.getElementById('spinBtn').style.display = 'none';
+      document.getElementById('spinResult').classList.add('hidden');
+
+      const prize = Gamification.spin();
+      const prizes = Gamification.getPrizes();
+      const idx = prizes.findIndex(p => p.points === prize.points);
+
+      // Tính góc để dừng đúng vào prize
+      const sliceAngle = 360 / prizes.length;
+      // Mũi kim ở trên (0°), vòng quay ngược chiều kim đồng hồ
+      const targetAngle = -(idx * sliceAngle + sliceAngle / 2) + 360 * 5;
+
+      wheelRotation += targetAngle;
+      const canvas = document.getElementById('wheelCanvas');
+      canvas.style.transform = `rotate(${wheelRotation}deg)`;
+
+      setTimeout(() => {
+        isSpinning = false;
+        document.getElementById('resultPrize').textContent = prize.label;
+        document.getElementById('spinResult').classList.remove('hidden');
+        document.getElementById('modalTicketCount').textContent = Gamification.getState().spinTickets;
+
+        // Confetti + sound
+        if (window.fireConfetti) fireConfetti(50);
+        if (window.notifyUser) notifyUser();
+
+        // Cập nhật UI ngoài
+        renderRewards();
+
+        // Nếu hết lượt → ẩn nút "Quay tiếp"
+        if (Gamification.getState().spinTickets <= 0) {
+          document.getElementById('spinAgainBtn').classList.add('opacity-50', 'pointer-events-none');
+        } else {
+          document.getElementById('spinBtn').style.display = '';
+        }
+      }, 4200); // khớp với transition 4s
+    }
+
+    window.openSpinWheel = openSpinWheel;
+    window.closeSpinWheel = closeSpinWheel;
+    window.doSpin = doSpin;
+
+    // Listen for updates
+    window.addEventListener('gamification:update', renderRewards);
+
+    // Init
+    renderRewards();  
+  </script>
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SPIN WHEEL MODAL                                        -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div id="spinModal" class="hidden fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-5">
+    <div class="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl animate-scale-in relative overflow-hidden">
+      <!-- Confetti background -->
+      <div class="absolute inset-0 pointer-events-none opacity-20">
+        <div class="absolute top-0 left-0 w-full h-full" style="background: radial-gradient(circle at 20% 20%, #F59E0B 0%, transparent 40%), radial-gradient(circle at 80% 30%, #8B5CF6 0%, transparent 40%), radial-gradient(circle at 50% 80%, #EC4899 0%, transparent 40%);"></div>
+      </div>
+
+      <div class="relative">
+        <!-- Header -->
+        <div class="text-center mb-5">
+          <div class="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">VÒNG QUAY MAY MẮN</div>
+          <h3 class="text-2xl font-extrabold text-slate-900 tracking-tight">Thử vận may!</h3>
+          <p class="text-xs text-slate-500 mt-1">Bạn có <b class="text-purple-600" id="modalTicketCount">0</b> lượt quay</p>
+        </div>
+
+        <!-- Wheel -->
+        <div class="relative flex items-center justify-center mb-6" style="height: 260px;">
+          <!-- Pointer (kim chỉ) -->
+          <div class="absolute top-0 left-1/2 -translate-x-1/2 z-20" style="top: -8px;">
+            <svg width="32" height="40" viewBox="0 0 32 40" fill="none">
+              <path d="M16 40 L4 12 Q16 0 28 12 Z" fill="#EF4444" stroke="#fff" stroke-width="2"/>
+              <circle cx="16" cy="14" r="4" fill="#fff"/>
+            </svg>
+          </div>
+
+          <!-- Wheel canvas -->
+          <canvas id="wheelCanvas" width="480" height="480" style="width: 240px; height: 240px; transform: rotate(0deg); transition: transform 4s cubic-bezier(0.17, 0.67, 0.16, 1);"></canvas>
+
+          <!-- Center button -->
+          <button id="spinBtn" onclick="doSpin()" class="absolute w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 shadow-xl shadow-amber-500/40 flex items-center justify-center text-white font-extrabold text-xs border-4 border-white active:scale-95 transition z-10">
+            QUAY
+          </button>
+        </div>
+
+        <!-- Result -->
+        <div id="spinResult" class="hidden mb-4 p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-200 text-center animate-scale-in">
+          <div class="text-4xl mb-1">🎉</div>
+          <div class="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Chúc mừng!</div>
+          <div class="text-2xl font-extrabold text-gradient-amber mt-1" id="resultPrize">+50 điểm</div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex gap-2">
+          <button onclick="closeSpinWheel()" class="flex-1 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-sm transition">
+            Đóng
+          </button>
+          <button id="spinAgainBtn" onclick="closeSpinWheel(); setTimeout(openSpinWheel, 300);" class="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm shadow-lg shadow-purple-500/30 transition">
+            Quay tiếp
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
