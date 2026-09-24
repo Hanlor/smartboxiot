@@ -240,6 +240,12 @@
     const API_BASE = window.location.origin;
     const PHONE_FMT = v => v.replace(/\D/g, '').replace(/(\d{3,4})(\d{3})(\d{3,4})/, '$1 $2 $3').trim();
 
+    // ─── QR scan: lấy locker từ URL ───
+    const urlParams = new URLSearchParams(window.location.search);
+    const lockerFromQR = urlParams.get('locker');
+    const targetLockerFromQR = lockerFromQR && ['1','2','3'].includes(lockerFromQR)
+      ? Number(lockerFromQR) : null;
+
     let state = {
       step: 1,
       senderPhone: '',
@@ -290,7 +296,41 @@
       'EMERGENCY': { label: 'SỰ CỐ', badge: 'bg-red-50 text-red-700 border-red-200' },
     };
 
-    async function loadLockers() {
+       async function loadLockers() {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/lockers`);
+        const data = await res.json();
+
+        const el = document.getElementById('lockerPicker');
+        el.innerHTML = data.lockers.map(L => {
+          const info = LOCKER_VI[L.status] || LOCKER_VI['MAINTENANCE'];
+          const available = L.status === 'AVAILABLE';
+          const isQR = targetLockerFromQR === L.locker_id;
+          return `
+            <button type="button" onclick="pickLocker(${L.locker_id}, ${available})"
+                    ${available ? '' : 'disabled'}
+                    data-locker="${L.locker_id}"
+                    class="locker-btn relative rounded-xl border-2 p-3 text-center transition active:scale-95 ${available ? 'border-slate-200 hover:border-brand-500 bg-white cursor-pointer' : 'border-slate-100 bg-slate-50 cursor-not-allowed opacity-60'} ${isQR && available ? 'ring-2 ring-brand-500/30' : ''}">
+              ${isQR ? '<div class="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-full bg-brand-500 text-white text-[8px] font-bold">BẠN Ở ĐÂY</div>' : ''}
+              <div class="text-[10px] font-bold text-slate-400 mb-1">TỦ #${L.locker_id}</div>
+              <div class="text-2xl font-extrabold text-slate-900 mb-1.5">${L.size}</div>
+              <div class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${info.badge} inline-block">${info.label}</div>
+            </button>
+          `;
+        }).join('');
+
+        // Auto-select tủ từ QR (chỉ lần đầu)
+        if (targetLockerFromQR && !state.lockerId) {
+          const targetBtn = document.querySelector(`.locker-btn[data-locker="${targetLockerFromQR}"]`);
+          if (targetBtn && !targetBtn.disabled) {
+            pickLocker(targetLockerFromQR, true);
+          }
+        }
+      } catch (e) {
+        document.getElementById('lockerPicker').innerHTML =
+          `<div class="col-span-3 text-center text-xs text-rose-600 py-4">Không tải được danh sách tủ</div>`;
+      }
+    }
       try {
         const res = await fetch(`${API_BASE}/api/v1/lockers`);
         const data = await res.json();
@@ -313,7 +353,7 @@
         document.getElementById('lockerPicker').innerHTML =
           `<div class="col-span-3 text-center text-xs text-rose-600 py-4">Không tải được danh sách tủ</div>`;
       }
-    }
+    
 
     function pickLocker(id, available) {
       if (!available) return;

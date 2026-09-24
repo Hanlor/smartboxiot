@@ -67,8 +67,22 @@
 
   <main class="max-w-md mx-auto px-5 pt-6 pb-12">
 
-    <!-- STEP 1 -->
+       <!-- STEP 1 -->
     <section id="step1" class="slide-in">
+
+      <!-- Locker badge từ QR -->
+      <div id="lockerBadge" class="hidden mb-5 p-4 rounded-2xl bg-gradient-to-r from-brand-50 to-emerald-50 border-2 border-brand-200">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-lg shadow-brand-500/30 shrink-0">
+            <i data-lucide="map-pin" class="text-white" style="width:20px;height:20px;"></i>
+          </div>
+          <div class="flex-1">
+            <div class="text-[10px] font-bold text-brand-600 uppercase tracking-wider">Bạn đang ở</div>
+            <div class="text-base font-extrabold text-slate-900 leading-tight" id="lockerBadgeText">Tủ #1</div>
+          </div>
+        </div>
+      </div>
+
       <div class="mb-6">
         <div class="w-14 h-14 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-center mb-4">
           <i data-lucide="package-open" class="text-brand-600" style="width:26px;height:26px;"></i>
@@ -199,6 +213,12 @@
     const API_BASE = window.location.origin;
     const PHONE_FMT = v => v.replace(/\D/g, '').replace(/(\d{3,4})(\d{3})(\d{3,4})/, '$1 $2 $3').trim();
 
+    // ─── QR scan: lấy locker từ URL ───
+    const urlParams = new URLSearchParams(window.location.search);
+    const lockerFromQR = urlParams.get('locker');
+    const targetLockerFromQR = lockerFromQR && ['1','2','3'].includes(lockerFromQR)
+      ? Number(lockerFromQR) : null;
+
     let state = {
       step: 1,
       recipientPhone: '',
@@ -291,12 +311,23 @@
           return showErr(errEl, data.message || 'Mã OTP không đúng hoặc đã hết hạn');
         }
 
-        state.recipientPhone = phone;
+                state.recipientPhone = phone;
         state.lockerId = data.locker_id;
+
+        // Cảnh báo nếu user quét QR tủ khác với tủ có đơn
+        if (targetLockerFromQR && targetLockerFromQR !== data.locker_id) {
+          const ok = confirm(
+            `⚠️ Đơn hàng của bạn ở TỦ #${data.locker_id}\n` +
+            `Nhưng bạn đang đứng ở TỦ #${targetLockerFromQR}.\n\n` +
+            `Vui lòng di chuyển đến TỦ #${data.locker_id} để lấy hàng.`
+          );
+          if (!ok) return;
+        }
 
         document.getElementById('pickupLocker').textContent = `tủ #${data.locker_id}`;
         showStep(2);
         startPollingPickup();
+
       } catch (e) {
         btn.disabled = false;
         btn.innerHTML = '<i data-lucide="unlock" style="width:16px;height:16px;"></i> Mở tủ';
@@ -401,6 +432,12 @@
       btn.disabled = false;
       btn.innerHTML = `<i data-lucide="refresh-cw" style="width:13px;height:13px;"></i> Không nhận được OTP? Gửi lại (${state.maxResend - state.resendCount})`;
       lucide.createIcons();
+        // ─── Hiện badge nếu có ?locker=X ───
+    if (targetLockerFromQR) {
+      document.getElementById('lockerBadge').classList.remove('hidden');
+      document.getElementById('lockerBadgeText').textContent = `Tủ #${targetLockerFromQR}`;
+      lucide.createIcons();
+    }
     }
   </script>
 

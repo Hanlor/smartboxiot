@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>QR Codes — Smart Box</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; }
+      .qr-card { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-8">
+
+  <!-- Header -->
+  <div class="max-w-5xl mx-auto mb-8 no-print">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-extrabold text-slate-900">QR Codes — Smart Box</h1>
+        <p class="text-sm text-slate-500 mt-1">In trang này và dán lên 3 tủ. User quét QR để mở web với tủ đã chọn sẵn.</p>
+      </div>
+      <button onclick="window.print()" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-lg shadow-indigo-600/30 transition">
+        🖨️ In trang này
+      </button>
+    </div>
+
+    <div class="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+      <b>Hướng dẫn in:</b> Chọn khổ A5, tỷ lệ 100%, không scale. Mỗi QR khoảng 8×8cm khi in.
+    </div>
+  </div>
+
+  <!-- QR Cards -->
+  <div class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6" id="qrContainer">
+    <!-- Filled by JS -->
+  </div>
+
+  <!-- Footer -->
+  <div class="max-w-5xl mx-auto mt-8 text-center text-xs text-slate-400 no-print">
+    Smart Box IoT System • QR Generator
+  </div>
+
+  <script>
+    const BASE_URL = window.location.origin;
+
+    const LOCKERS = [
+      { id: 1, size: 'S', color: 'emerald' },
+      { id: 2, size: 'M', color: 'amber' },
+      { id: 3, size: 'L', color: 'rose' },
+    ];
+
+    const container = document.getElementById('qrContainer');
+
+    LOCKERS.forEach(L => {
+      // URL cho QR: về landing page với locker_id
+      const qrUrl = `${BASE_URL}/?locker=${L.id}`;
+
+      const card = document.createElement('div');
+      card.className = 'qr-card bg-white rounded-2xl shadow-xl p-6 border-4 border-slate-200';
+      card.innerHTML = `
+        <!-- Card header -->
+        <div class="text-center mb-4 pb-4 border-b-2 border-dashed border-slate-200">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-200">
+            <span class="w-2 h-2 rounded-full bg-${L.color}-500"></span>
+            <span class="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Smart Box</span>
+          </div>
+        </div>
+
+        <!-- QR -->
+        <div class="flex items-center justify-center mb-4">
+          <canvas id="qr-${L.id}" class="rounded-lg"></canvas>
+        </div>
+
+        <!-- Locker info -->
+        <div class="text-center">
+          <div class="text-3xl font-extrabold text-slate-900 mb-1">TỦ #${L.id}</div>
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-${L.color}-50 border border-${L.color}-200">
+            <span class="text-[11px] font-bold text-${L.color}-700">KÍCH THƯỚC ${L.size}</span>
+          </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="mt-5 pt-4 border-t-2 border-dashed border-slate-200">
+          <div class="text-center">
+            <div class="text-xs font-bold text-slate-700 mb-1">📱 QUÉT ĐỂ SỬ DỤNG</div>
+            <div class="text-[10px] text-slate-500 leading-relaxed">
+              Mở camera điện thoại<br>
+              → Quét mã QR<br>
+              → Chọn Gửi hoặc Nhận hàng
+            </div>
+          </div>
+        </div>
+
+        <!-- URL fallback -->
+        <div class="mt-3 text-center">
+          <div class="text-[9px] text-slate-400 mono break-all">
+            ${qrUrl}
+          </div>
+        </div>
+      `;
+      container.appendChild(card);
+
+      // Render QR code
+      QRCode.toCanvas(document.getElementById(`qr-${L.id}`), qrUrl, {
+        width: 220,
+        margin: 1,
+        color: { dark: '#0F172A', light: '#FFFFFF' },
+        errorCorrectionLevel: 'H',
+      }, err => {
+        if (err) console.error('QR error:', err);
+      });
+    });
+  </script>
+
+</body>
+</html>

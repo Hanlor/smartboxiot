@@ -94,6 +94,22 @@
   <!-- ═══════════════════════════════════════════ -->
   <main class="max-w-md mx-auto px-5 pt-8 pb-12">
 
+        <!-- Locker Badge (hiện khi user quét QR) -->
+    <div id="lockerBadge" class="hidden mb-5 p-4 rounded-2xl bg-gradient-to-r from-brand-50 to-indigo-50 border-2 border-brand-200 animate-slide-up">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-lg shadow-brand-500/30 shrink-0">
+          <i data-lucide="map-pin" class="text-white" style="width:22px;height:22px;"></i>
+        </div>
+        <div class="flex-1">
+          <div class="text-[10px] font-bold text-brand-600 uppercase tracking-wider">Bạn đang ở</div>
+          <div class="text-lg font-extrabold text-slate-900 leading-tight" id="lockerBadgeText">Tủ #1</div>
+        </div>
+        <button onclick="clearLocker()" class="w-8 h-8 rounded-lg hover:bg-white/60 flex items-center justify-center transition">
+          <i data-lucide="x" class="text-slate-400" style="width:16px;height:16px;"></i>
+        </button>
+      </div>
+    </div>
+
     <!-- Hero -->
     <section class="text-center mb-8 animate-fade-in">
       <h1 class="text-2xl font-extrabold text-slate-900 leading-tight mb-2">
@@ -237,6 +253,29 @@
         document.getElementById('statusText').textContent = 'Offline';
         console.error(e);
       }
+    }
+
+        // ─── Xử lý QR scan (?locker=1) ───
+    const urlParams = new URLSearchParams(window.location.search);
+    const lockerFromQR = urlParams.get('locker');
+
+    if (lockerFromQR && ['1', '2', '3'].includes(lockerFromQR)) {
+      const badge = document.getElementById('lockerBadge');
+      const badgeText = document.getElementById('lockerBadgeText');
+      badgeText.textContent = `Tủ #${lockerFromQR}`;
+      badge.classList.remove('hidden');
+
+      // Đổi href của 2 nút chính để truyền locker
+      document.querySelector('a[href="/send.html"]').href = `/send.html?locker=${lockerFromQR}`;
+      document.querySelector('a[href="/receive.html"]').href = `/receive.html?locker=${lockerFromQR}`;
+
+      lucide.createIcons();
+    }
+
+    function clearLocker() {
+      const url = new URL(window.location);
+      url.searchParams.delete('locker');
+      window.location.href = url.toString();
     }
 
     refreshLockers();
