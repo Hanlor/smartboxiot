@@ -34,10 +34,9 @@
 
 <body class="font-sans bg-gradient-to-b from-slate-50 via-white to-slate-50 min-h-screen antialiased">
 
-  <!-- HEADER -->
-    <header class="sticky top-0 z-50 glass border-b border-slate-200/60">
+  <!-- ═══ HEADER ═══ -->
+  <header class="sticky top-0 z-50 glass border-b border-slate-200/60">
     <div class="max-w-md mx-auto px-4 h-14 flex items-center justify-between gap-2">
-      <!-- Logo + tên app -->
       <div class="flex items-center gap-2 min-w-0 flex-1">
         <img src="/assets/uth-logo.png" alt="UTH" class="logo-uth h-7 w-auto shrink-0">
         <div class="w-px h-5 bg-slate-200 shrink-0"></div>
@@ -47,15 +46,14 @@
         </div>
       </div>
 
-      <!-- Badges -->
       <div class="flex items-center gap-1.5 shrink-0">
         <button onclick="location.href='#rewards'" class="flex items-center gap-1 px-2 py-1 rounded-full bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 hover:border-amber-300 transition">
           <i data-lucide="sparkles" class="text-amber-500" style="width:11px;height:11px;"></i>
           <span class="text-[10px] font-bold text-amber-700 whitespace-nowrap" id="headerPoints">0 điểm</span>
         </button>
-        <div class="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-breathe shrink-0"></span>
-          <span class="text-[10px] font-semibold text-emerald-700 whitespace-nowrap" id="statusText">Online</span>
+        <div class="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 border border-amber-200 transition-colors duration-500">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-breathe shrink-0"></span>
+          <span class="text-[10px] font-semibold text-amber-700 whitespace-nowrap" id="statusText">Đang kết nối...</span>
         </div>
       </div>
     </div>
@@ -79,7 +77,7 @@
       </div>
     </div>
 
-    <!-- Hero với Mesh Gradient -->
+    <!-- Hero -->
     <section class="mesh-hero text-center mb-8 animate-slide-up" style="padding-top: 8px; padding-bottom: 16px;">
       <div class="relative z-10">
         <h1 class="text-3xl font-extrabold text-slate-900 leading-tight mb-2 tracking-tight">
@@ -90,9 +88,9 @@
           Xác thực bằng OTP — Bảo mật tuyệt đối, hoạt động 24/7
         </p>
       </div>
-        </section>
+    </section>
 
-    <!-- ═══ EMPTY STATE (hiện khi cả 3 tủ OCCUPIED) ═══ -->
+    <!-- EMPTY STATE -->
     <div id="emptyState" class="hidden mb-6 p-5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 animate-slide-up">
       <div class="flex items-start gap-3">
         <div class="w-12 h-12 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center shrink-0">
@@ -113,7 +111,6 @@
 
     <!-- Action Cards -->
     <section class="space-y-3">
-
       <a href="/send.html"
          class="btn-shine group block relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 p-5 shadow-xl shadow-brand-500/25 animate-slide-up">
         <div class="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full"></div>
@@ -145,7 +142,6 @@
           <i data-lucide="chevron-right" class="text-white/80" style="width:22px;height:22px;"></i>
         </div>
       </a>
-
     </section>
 
     <!-- Trust Badges -->
@@ -164,12 +160,23 @@
       </div>
     </section>
 
-      <!-- Live Lockers Preview -->
+    <!-- Live Lockers Preview -->
     <section class="mt-8">
-     
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wide">Trạng thái tủ</h2>
+        <button onclick="refreshLockers()" class="text-[11px] text-brand-600 font-semibold flex items-center gap-1 active:opacity-60">
+          <i data-lucide="refresh-cw" style="width:12px;height:12px;"></i>
+          Làm mới
+        </button>
+      </div>
+      <div id="lockersPreview" class="grid grid-cols-3 gap-2.5">
+        <div class="skeleton h-20"></div>
+        <div class="skeleton h-20"></div>
+        <div class="skeleton h-20"></div>
+      </div>
     </section>
 
-    <!-- ═══ LỊCH SỬ ═══ -->
+    <!-- LỊCH SỬ -->
     <section id="historySection" class="mt-8 hidden">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
@@ -183,9 +190,8 @@
       </div>
       <div id="historyList" class="space-y-2"></div>
     </section>
-    <!-- ═══════════════════════════════════════════════════════ -->
-    <!-- REWARDS & LOYALTY                                       -->
-    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <!-- REWARDS -->
     <section id="rewards" class="mt-8">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
@@ -194,7 +200,6 @@
         </h2>
       </div>
 
-      <!-- Card điểm -->
       <div class="card-premium p-5 mb-3">
         <div class="flex items-center justify-between mb-4">
           <div>
@@ -209,7 +214,6 @@
           </div>
         </div>
 
-        <!-- Progress bar tới milestone -->
         <div id="milestoneBox">
           <div class="flex items-center justify-between mb-2">
             <span class="text-[11px] text-slate-500">Tiến độ tới phần thưởng</span>
@@ -224,7 +228,6 @@
           </div>
         </div>
 
-        <!-- Spin tickets -->
         <div id="spinBox" class="hidden mt-4 pt-4 border-t border-slate-100">
           <div class="flex items-center gap-3">
             <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30 shrink-0 animate-float">
@@ -249,49 +252,135 @@
       <img src="/assets/uth-logo.png" alt="Trường Đại học Giao thông vận tải TP.HCM" class="logo-uth h-12 w-auto mx-auto mb-3 opacity-90">
       <div class="text-[10px] text-slate-400 leading-relaxed">
         <div class="font-semibold text-slate-500 mb-0.5">Smart Box IoT System</div>
-        <div>Đồ án tốt nghiệp • Trường ĐH GTVT TP.HCM</div>
+        <div>Đồ án môn học IoT • Trường ĐH GTVT TP.HCM</div>
         <div class="mt-1">v1.0 • © 2026</div>
       </div>
     </div>
   </footer>
 
+  <!-- SPIN WHEEL MODAL -->
+  <div id="spinModal" class="hidden fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-5">
+    <div class="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl animate-scale-in relative overflow-hidden">
+      <div class="absolute inset-0 pointer-events-none opacity-20">
+        <div class="absolute top-0 left-0 w-full h-full" style="background: radial-gradient(circle at 20% 20%, #F59E0B 0%, transparent 40%), radial-gradient(circle at 80% 30%, #8B5CF6 0%, transparent 40%), radial-gradient(circle at 50% 80%, #EC4899 0%, transparent 40%);"></div>
+      </div>
+
+      <div class="relative">
+        <div class="text-center mb-5">
+          <div class="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">VÒNG QUAY MAY MẮN</div>
+          <h3 class="text-2xl font-extrabold text-slate-900 tracking-tight">Thử vận may!</h3>
+          <p class="text-xs text-slate-500 mt-1">Bạn có <b class="text-purple-600" id="modalTicketCount">0</b> lượt quay</p>
+        </div>
+
+        <div class="relative flex items-center justify-center mb-6" style="height: 260px;">
+          <div class="absolute top-0 left-1/2 -translate-x-1/2 z-20" style="top: -8px;">
+            <svg width="32" height="40" viewBox="0 0 32 40" fill="none">
+              <path d="M16 40 L4 12 Q16 0 28 12 Z" fill="#EF4444" stroke="#fff" stroke-width="2"/>
+              <circle cx="16" cy="14" r="4" fill="#fff"/>
+            </svg>
+          </div>
+
+          <canvas id="wheelCanvas" width="480" height="480" style="width: 240px; height: 240px; transform: rotate(0deg); transition: transform 4s cubic-bezier(0.17, 0.67, 0.16, 1);"></canvas>
+
+          <button id="spinBtn" onclick="doSpin()" class="absolute w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 shadow-xl shadow-amber-500/40 flex items-center justify-center text-white font-extrabold text-xs border-4 border-white active:scale-95 transition z-10">
+            QUAY
+          </button>
+        </div>
+
+        <div id="spinResult" class="hidden mb-4 p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-200 text-center animate-scale-in">
+          <div class="text-4xl mb-1">🎉</div>
+          <div class="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Chúc mừng!</div>
+          <div class="text-2xl font-extrabold text-gradient-amber mt-1" id="resultPrize">+50 điểm</div>
+        </div>
+
+        <div class="flex gap-2">
+          <button onclick="closeSpinWheel()" class="flex-1 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-sm transition">
+            Đóng
+          </button>
+          <button id="spinAgainBtn" onclick="closeSpinWheel(); setTimeout(openSpinWheel, 300);" class="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm shadow-lg shadow-purple-500/30 transition">
+            Quay tiếp
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="/assets/toast.js"></script>
-  <script src="/assets/gamification.js"></script>   <!-- THÊM DÒNG NÀY -->
+  <script src="/assets/gamification.js"></script>
   <script>
     lucide.createIcons();
 
     const API_BASE = window.location.origin;
 
     const STATUS_MAP = {
-      'AVAILABLE':      { label: 'TRỐNG',     dot: 'bg-emerald-500', border: 'border-emerald-200', text: 'text-emerald-700' },
+      'AVAILABLE':      { label: 'TRỐNG',        dot: 'bg-emerald-500', border: 'border-emerald-200', text: 'text-emerald-700' },
       'PENDING_SENDER': { label: 'CHỜ XÁC THỰC', dot: 'bg-amber-500',   border: 'border-amber-200',   text: 'text-amber-700' },
-      'RESERVED':       { label: 'GIỮ CHỖ',   dot: 'bg-amber-500',   border: 'border-amber-200',   text: 'text-amber-700' },
-      'DEPOSITING':     { label: 'ĐANG GỬI',  dot: 'bg-amber-500',   border: 'border-amber-200',   text: 'text-amber-700' },
-      'OCCUPIED':       { label: 'CÓ HÀNG',   dot: 'bg-rose-500',    border: 'border-rose-200',    text: 'text-rose-700' },
-      'PICKING':        { label: 'ĐANG LẤY',  dot: 'bg-amber-500',   border: 'border-amber-200',   text: 'text-amber-700' },
-      'MAINTENANCE':    { label: 'BẢO TRÌ',   dot: 'bg-slate-500',   border: 'border-slate-200',   text: 'text-slate-700' },
-      'EMERGENCY':      { label: 'KHẨN CẤP',  dot: 'bg-red-500',     border: 'border-red-200',     text: 'text-red-700' },
+      'RESERVED':       { label: 'GIỮ CHỖ',      dot: 'bg-amber-500',   border: 'border-amber-200',   text: 'text-amber-700' },
+      'DEPOSITING':     { label: 'ĐANG GỬI',     dot: 'bg-amber-500',   border: 'border-amber-200',   text: 'text-amber-700' },
+      'OCCUPIED':       { label: 'CÓ HÀNG',      dot: 'bg-rose-500',    border: 'border-rose-200',    text: 'text-rose-700' },
+      'PICKING':        { label: 'ĐANG LẤY',     dot: 'bg-amber-500',   border: 'border-amber-200',   text: 'text-amber-700' },
+      'MAINTENANCE':    { label: 'BẢO TRÌ',      dot: 'bg-slate-500',   border: 'border-slate-200',   text: 'text-slate-700' },
+      'EMERGENCY':      { label: 'KHẨN CẤP',     dot: 'bg-red-500',     border: 'border-red-200',     text: 'text-red-700' },
     };
 
-        async function refreshLockers() {
-      try {
-        // Nếu đang Offline → đổi text thành "Đang kết nối..."
-        const statusEl = document.getElementById('statusText');
-        if (statusEl.textContent === 'Offline') {
-          statusEl.textContent = 'Đang kết nối...';
-        }
+    // ═══════════════════════════════════════════════════════
+    // STATUS STATE MACHINE — không nhảy loạn
+    // ═══════════════════════════════════════════════════════
+    let consecutiveFails = 0;
+    let currentStatus = 'CHECKING';
+    let isFetching = false;
 
+    function setStatus(newStatus) {
+      if (newStatus === currentStatus) return;
+      currentStatus = newStatus;
+
+      const el = document.getElementById('statusText');
+      if (!el) return;
+      const dot = el.previousElementSibling;
+      const wrap = el.parentElement;
+
+      if (newStatus === 'ONLINE') {
+        el.textContent = 'Online';
+        wrap.className = 'flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200 transition-colors duration-500';
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-breathe shrink-0';
+        el.className = 'text-[10px] font-semibold text-emerald-700 whitespace-nowrap';
+      } else if (newStatus === 'OFFLINE') {
+        el.textContent = 'Offline';
+        wrap.className = 'flex items-center gap-1 px-2 py-1 rounded-full bg-rose-50 border border-rose-200 transition-colors duration-500';
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0';
+        el.className = 'text-[10px] font-semibold text-rose-700 whitespace-nowrap';
+      } else {
+        el.textContent = 'Đang kết nối...';
+        wrap.className = 'flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 border border-amber-200 transition-colors duration-500';
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-amber-500 animate-breathe shrink-0';
+        el.className = 'text-[10px] font-semibold text-amber-700 whitespace-nowrap';
+      }
+    }
+
+    async function refreshLockers() {
+      if (isFetching) return;
+      isFetching = true;
+
+      if (currentStatus === 'CHECKING' || consecutiveFails >= 3) {
+        setStatus('CHECKING');
+      }
+
+      try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s cho Render wake
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
 
         const res = await fetch(`${API_BASE}/api/v1/lockers`, {
           signal: controller.signal,
         });
         clearTimeout(timeoutId);
 
-        const data = await res.json();
-        document.getElementById('statusText').textContent = 'Online';
+        if (!res.ok) throw new Error('HTTP ' + res.status);
 
+        const data = await res.json();
+        consecutiveFails = 0;
+        setStatus('ONLINE');
+
+        // Render lockers
         const html = data.lockers.map(L => {
           const s = STATUS_MAP[L.status] || STATUS_MAP['MAINTENANCE'];
           return `
@@ -306,25 +395,29 @@
           `;
         }).join('');
 
-               document.getElementById('lockersPreview').innerHTML = html;
+        const previewEl = document.getElementById('lockersPreview');
+        if (previewEl) previewEl.innerHTML = html;
 
-        // Check empty state: cả 3 tủ đều OCCUPIED
+        // Empty state
         const allOccupied = data.lockers.every(L => L.status === 'OCCUPIED');
         const emptyEl = document.getElementById('emptyState');
-        if (allOccupied) {
-          emptyEl.classList.remove('hidden');
-          lucide.createIcons();
-        } else {
-          emptyEl.classList.add('hidden');
+        if (emptyEl) {
+          if (allOccupied) {
+            emptyEl.classList.remove('hidden');
+            lucide.createIcons();
+          } else {
+            emptyEl.classList.add('hidden');
+          }
         }
-            } catch (e) {
-        document.getElementById('statusText').textContent = 'Offline';
-        // Tự động thử lại sau 5 giây
-        setTimeout(refreshLockers, 5000);
+      } catch (e) {
+        consecutiveFails++;
+        if (consecutiveFails >= 3) setStatus('OFFLINE');
+      } finally {
+        isFetching = false;
       }
     }
 
-    // ─── Xử lý QR scan (?locker=1) ───
+    // ─── QR scan ───
     const urlParams = new URLSearchParams(window.location.search);
     const lockerFromQR = urlParams.get('locker');
 
@@ -346,7 +439,7 @@
       window.location.href = url.toString();
     }
 
-        // ═══ RENDER LỊCH SỬ ═══
+    // ═══ HISTORY ═══
     function renderHistory() {
       const arr = window.getHistory ? getHistory() : [];
       const section = document.getElementById('historySection');
@@ -383,7 +476,7 @@
                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
               </div>
               <div class="text-[10px] text-slate-500 font-mono truncate">
-                ${isSend ? FMT_PHONE(h.recipient_phone) : FMT_PHONE(h.recipient_phone)}
+                ${FMT_PHONE(h.recipient_phone)}
                 ${h.shipment_id ? `• ${h.shipment_id}` : ''}
               </div>
             </div>
@@ -404,25 +497,27 @@
 
     renderHistory();
 
-    refreshLockers();
-    setInterval(refreshLockers, 3000);
-      // ═══════════════════════════════════════════════════════
-    // GAMIFICATION UI
-    // ═══════════════════════════════════════════════════════
+    // ═══ GAMIFICATION ═══
     function renderRewards() {
       if (!window.Gamification) return;
       const state = Gamification.getState();
       const level = Gamification.getLevel();
       const milestone = Gamification.getNextMilestone();
 
-      document.getElementById('headerPoints').textContent = `${state.points} điểm`;
-      document.getElementById('rewardPoints').textContent = state.points;
-      document.getElementById('levelName').textContent = level.name;
+      const headerPoints = document.getElementById('headerPoints');
+      const rewardPoints = document.getElementById('rewardPoints');
+      const levelName = document.getElementById('levelName');
+
+      if (headerPoints) headerPoints.textContent = `${state.points} điểm`;
+      if (rewardPoints) rewardPoints.textContent = state.points;
+      if (levelName) levelName.textContent = level.name;
 
       const badge = document.getElementById('levelBadge');
-      badge.style.background = level.color + '15';
-      badge.style.border = `1px solid ${level.color}40`;
-      badge.style.color = level.color;
+      if (badge) {
+        badge.style.background = level.color + '15';
+        badge.style.border = `1px solid ${level.color}40`;
+        badge.style.color = level.color;
+      }
 
       if (milestone) {
         document.getElementById('milestoneText').textContent = `${milestone.remaining} điểm nữa`;
@@ -435,7 +530,6 @@
         document.getElementById('milestoneBar').style.width = '100%';
       }
 
-      // Spin box
       const spinBox = document.getElementById('spinBox');
       if (state.spinTickets > 0) {
         spinBox.classList.remove('hidden');
@@ -465,7 +559,6 @@
         const startAngle = i * sliceAngle - Math.PI / 2;
         const endAngle = startAngle + sliceAngle;
 
-        // Slice
         ctx.beginPath();
         ctx.moveTo(cx, cy);
         ctx.arc(cx, cy, radius, startAngle, endAngle);
@@ -476,7 +569,6 @@
         ctx.lineWidth = 4;
         ctx.stroke();
 
-        // Text
         ctx.save();
         ctx.translate(cx, cy);
         ctx.rotate(startAngle + sliceAngle / 2);
@@ -487,7 +579,6 @@
         ctx.restore();
       });
 
-      // Center circle
       ctx.beginPath();
       ctx.arc(cx, cy, 60, 0, Math.PI * 2);
       ctx.fillStyle = '#fff';
@@ -504,6 +595,7 @@
       document.getElementById('modalTicketCount').textContent = state.spinTickets;
       document.getElementById('spinResult').classList.add('hidden');
       document.getElementById('spinBtn').style.display = '';
+      document.getElementById('spinAgainBtn').classList.remove('opacity-50', 'pointer-events-none');
       drawWheel();
     }
 
@@ -524,9 +616,7 @@
       const prizes = Gamification.getPrizes();
       const idx = prizes.findIndex(p => p.points === prize.points);
 
-      // Tính góc để dừng đúng vào prize
       const sliceAngle = 360 / prizes.length;
-      // Mũi kim ở trên (0°), vòng quay ngược chiều kim đồng hồ
       const targetAngle = -(idx * sliceAngle + sliceAngle / 2) + 360 * 5;
 
       wheelRotation += targetAngle;
@@ -539,87 +629,32 @@
         document.getElementById('spinResult').classList.remove('hidden');
         document.getElementById('modalTicketCount').textContent = Gamification.getState().spinTickets;
 
-        // Confetti + sound
         if (window.fireConfetti) fireConfetti(50);
         if (window.notifyUser) notifyUser();
 
-        // Cập nhật UI ngoài
         renderRewards();
 
-        // Nếu hết lượt → ẩn nút "Quay tiếp"
         if (Gamification.getState().spinTickets <= 0) {
           document.getElementById('spinAgainBtn').classList.add('opacity-50', 'pointer-events-none');
         } else {
           document.getElementById('spinBtn').style.display = '';
         }
-      }, 4200); // khớp với transition 4s
+      }, 4200);
     }
 
     window.openSpinWheel = openSpinWheel;
     window.closeSpinWheel = closeSpinWheel;
     window.doSpin = doSpin;
 
-    // Listen for updates
     window.addEventListener('gamification:update', renderRewards);
 
-    // Init
-    renderRewards();  
+    renderRewards();
+
+    // ═══ INIT ═══
+    setStatus('CHECKING');
+    refreshLockers();
+    setInterval(refreshLockers, 5000);
   </script>
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- SPIN WHEEL MODAL                                        -->
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <div id="spinModal" class="hidden fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-5">
-    <div class="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl animate-scale-in relative overflow-hidden">
-      <!-- Confetti background -->
-      <div class="absolute inset-0 pointer-events-none opacity-20">
-        <div class="absolute top-0 left-0 w-full h-full" style="background: radial-gradient(circle at 20% 20%, #F59E0B 0%, transparent 40%), radial-gradient(circle at 80% 30%, #8B5CF6 0%, transparent 40%), radial-gradient(circle at 50% 80%, #EC4899 0%, transparent 40%);"></div>
-      </div>
 
-      <div class="relative">
-        <!-- Header -->
-        <div class="text-center mb-5">
-          <div class="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">VÒNG QUAY MAY MẮN</div>
-          <h3 class="text-2xl font-extrabold text-slate-900 tracking-tight">Thử vận may!</h3>
-          <p class="text-xs text-slate-500 mt-1">Bạn có <b class="text-purple-600" id="modalTicketCount">0</b> lượt quay</p>
-        </div>
-
-        <!-- Wheel -->
-        <div class="relative flex items-center justify-center mb-6" style="height: 260px;">
-          <!-- Pointer (kim chỉ) -->
-          <div class="absolute top-0 left-1/2 -translate-x-1/2 z-20" style="top: -8px;">
-            <svg width="32" height="40" viewBox="0 0 32 40" fill="none">
-              <path d="M16 40 L4 12 Q16 0 28 12 Z" fill="#EF4444" stroke="#fff" stroke-width="2"/>
-              <circle cx="16" cy="14" r="4" fill="#fff"/>
-            </svg>
-          </div>
-
-          <!-- Wheel canvas -->
-          <canvas id="wheelCanvas" width="480" height="480" style="width: 240px; height: 240px; transform: rotate(0deg); transition: transform 4s cubic-bezier(0.17, 0.67, 0.16, 1);"></canvas>
-
-          <!-- Center button -->
-          <button id="spinBtn" onclick="doSpin()" class="absolute w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 shadow-xl shadow-amber-500/40 flex items-center justify-center text-white font-extrabold text-xs border-4 border-white active:scale-95 transition z-10">
-            QUAY
-          </button>
-        </div>
-
-        <!-- Result -->
-        <div id="spinResult" class="hidden mb-4 p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-200 text-center animate-scale-in">
-          <div class="text-4xl mb-1">🎉</div>
-          <div class="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Chúc mừng!</div>
-          <div class="text-2xl font-extrabold text-gradient-amber mt-1" id="resultPrize">+50 điểm</div>
-        </div>
-
-        <!-- Buttons -->
-        <div class="flex gap-2">
-          <button onclick="closeSpinWheel()" class="flex-1 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-sm transition">
-            Đóng
-          </button>
-          <button id="spinAgainBtn" onclick="closeSpinWheel(); setTimeout(openSpinWheel, 300);" class="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm shadow-lg shadow-purple-500/30 transition">
-            Quay tiếp
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
 </body>
 </html>
