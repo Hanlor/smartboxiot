@@ -499,7 +499,67 @@ app.locals.helpers = {
   padLcdLine,
   normalizePhoneVN, 
 };
+// ═══════════════════════════════════════════════════════════
+// QR CODE GENERATOR (server-side, không phụ thuộc client)
+// ═══════════════════════════════════════════════════════════
+const QRCode = require('qrcode');
 
+app.get('/api/v1/qr', async (req, res) => {
+  try {
+    const { data, size, format } = req.query;
+
+    if (!data) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing "data" query param',
+      });
+    }
+
+    if (data.length > 500) {
+      return res.status(400).json({
+        success: false,
+        message: 'Data too long (max 500 chars)',
+      });
+    }
+
+    const qrSize = Math.min(Math.max(Number(size) || 300, 100), 1000);
+    const fmt = format === 'png' ? 'png' : 'svg';
+
+    if (fmt === 'svg') {
+      const svg = await QRCode.toString(data, {
+        type: 'svg',
+        width: qrSize,
+        margin: 2,
+        errorCorrectionLevel: 'H',
+        color: { dark: '#0F172A', light: '#FFFFFF' },
+      });
+
+      res.set('Content-Type', 'image/svg+xml');
+      res.set('Cache-Control', 'public, max-age=86400'); // cache 1 ngày
+      return res.send(svg);
+    }
+
+    // PNG
+    const buffer = await QRCode.toBuffer(data, {
+      type: 'png',
+      width: qrSize,
+      margin: 2,
+      errorCorrectionLevel: 'H',
+      color: { dark: '#0F172A', light: '#FFFFFF' },
+    });
+
+    res.set('Content-Type', 'image/png');
+    res.set('Cache-Control', 'public, max-age=86400');
+    return res.send(buffer);
+
+  } catch (err) {
+    console.error('[QR] Error:', err.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to generate QR',
+    });
+  }
+});
 app.get('/health', (_req, res) => {
   res.json({ success: true, service: 'smart-box-api', uptime_s: Math.round(process.uptime()) });
 });

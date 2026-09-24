@@ -296,7 +296,7 @@
       'EMERGENCY': { label: 'SỰ CỐ', badge: 'bg-red-50 text-red-700 border-red-200' },
     };
 
-       async function loadLockers() {
+    async function loadLockers() {
       try {
         const res = await fetch(`${API_BASE}/api/v1/lockers`);
         const data = await res.json();
