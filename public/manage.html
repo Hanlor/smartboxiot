@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý đơn — Smart Box</title>
+  <link rel="stylesheet" href="/assets/premium.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] }
+      }}
+    }
+  </script>
+</head>
+<body class="font-sans bg-slate-50 min-h-screen">
+
+  <header class="sticky top-0 z-50 glass border-b border-slate-200/60">
+    <div class="max-w-md mx-auto px-4 h-14 flex items-center gap-3">
+      <a href="/" class="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center">
+        <i data-lucide="arrow-left" class="text-slate-700" style="width:20px;height:20px;"></i>
+      </a>
+      <div class="flex-1">
+        <div class="font-extrabold text-slate-900 text-sm">Quản lý đơn hàng</div>
+        <div class="text-[10px] text-slate-500">Xem trạng thái và gia hạn</div>
+      </div>
+      <img src="/assets/uth-logo.png" alt="UTH" class="logo-uth h-6 w-auto opacity-80">
+    </div>
+  </header>
+
+  <main class="max-w-md mx-auto px-5 pt-6 pb-12">
+
+    <!-- Lookup form -->
+    <div id="lookupForm" class="card-premium p-5 mb-4">
+      <h2 class="text-lg font-extrabold text-slate-900 mb-1 tracking-tight">Tra cứu đơn hàng</h2>
+      <p class="text-xs text-slate-500 mb-4">Nhập mã đơn hoặc SĐT người gửi</p>
+
+      <div class="mb-4">
+        <label class="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">SĐT người gửi</label>
+        <input id="senderPhone" type="tel" inputmode="numeric" maxlength="12" placeholder="0912 345 678"
+               class="w-full px-4 py-3.5 rounded-xl border-2 border-slate-200 focus:border-brand-500 outline-none text-slate-900 font-mono font-semibold transition">
+      </div>
+
+      <button onclick="lookupShipments()"
+              class="btn-shine w-full py-4 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 text-white font-bold text-sm shadow-lg shadow-brand-500/30">
+        Tra cứu
+      </button>
+    </div>
+
+    <!-- Results -->
+    <div id="results" class="space-y-3"></div>
+
+  </main>
+
+  <!-- Extension Modal -->
+  <div id="extendModal" class="hidden fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-5">
+    <div class="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl animate-scale-in">
+      <h3 class="text-xl font-extrabold text-slate-900 mb-1">Gia hạn đơn hàng</h3>
+      <p class="text-xs text-slate-500 mb-5">
+        Nhập OTP gửi tới SĐT <span id="extendPhone" class="font-mono font-bold"></span>
+      </p>
+
+      <div class="flex justify-center gap-2 mb-5" id="extendOtpInputs">
+        <input class="otp-box" maxlength="1" type="tel" inputmode="numeric">
+        <input class="otp-box" maxlength="1" type="tel" inputmode="numeric">
+        <input class="otp-box" maxlength="1" type="tel" inputmode="numeric">
+        <input class="otp-box" maxlength="1" type="tel" inputmode="numeric">
+        <input class="otp-box" maxlength="1" type="tel" inputmode="numeric">
+        <input class="otp-box" maxlength="1" type="tel" inputmode="numeric">
+      </div>
+
+      <div id="extendError" class="hidden mb-4 px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs"></div>
+
+      <div class="flex gap-2">
+        <button onclick="closeExtendModal()" class="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm">Hủy</button>
+        <button onclick="submitExtend()" class="btn-shine flex-1 py-3 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 text-white font-bold text-sm">Xác nhận</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/toast.js"></script>
+  <script>
+    lucide.createIcons();
+    const API_BASE = window.location.origin;
+    const PHONE_FMT = v => v.replace(/\D/g, '').replace(/(\d{3,4})(\d{3})(\d{3,4})/, '$1 $2 $3').trim();
+
+    let currentShipmentId = null;
+
+    document.getElementById('senderPhone').addEventListener('input', e => {
+      let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+      e.target.value = v ? PHONE_FMT(v) : '';
+    });
+
+    async function lookupShipments() {
+      const phone = document.getElementById('senderPhone').value.replace(/\D/g, '');
+      if (phone.length < 10) return showToast('SĐT không hợp lệ', 'error');
+
+      const res = await fetch(`${API_BASE}/api/v1/admin/shipments?limit=50`);
+      const data = await res.json();
+
+      // Client-side filter theo SĐT sender (backend không có endpoint này)
+      // Trong production nên có endpoint riêng
+      const results = document.getElementById('results');
+
+      // Chỉ hiện hướng dẫn — trong production sẽ gọi API riêng
+      results.innerHTML = `
+        <div class="card-premium p-5 text-center">
+          <i data-lucide="info" class="mx-auto text-brand-500 mb-3" style="width:32px;height:32px;"></i>
+          <div class="text-sm font-bold text-slate-900 mb-1">Tính năng đang hoàn thiện</div>
+          <div class="text-xs text-slate-500">
+            Vui lòng liên hệ hotline <b class="font-mono">0356 297 703</b> để được hỗ trợ gia hạn đơn hàng.
+          </div>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    function closeExtendModal() {
+      document.getElementById('extendModal').classList.add('hidden');
+    }
+  </script>
+
+  <style>
+    .otp-box {
+      width: 44px; height: 56px; text-align: center;
+      font-size: 20px; font-weight: 700;
+      border: 2px solid #E2E8F0; border-radius: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .otp-box:focus { border-color: #6366F1; outline: none; }
+  </style>
+
+</body>
+</html>

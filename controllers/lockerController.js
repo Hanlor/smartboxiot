@@ -695,10 +695,14 @@ async function updateTelemetry(req, res) {
       used: false,
     });
 
-    if (locker.shipment_id && db.shipments.has(locker.shipment_id)) {
+        if (locker.shipment_id && db.shipments.has(locker.shipment_id)) {
       const shipment = db.shipments.get(locker.shipment_id);
-      shipment.occupied_at = Date.now();
+      const now = Date.now();
+      shipment.occupied_at = now;
       shipment.status = 'OCCUPIED';
+      // ✅ Tính deadline
+      shipment.deadline_at = now + (helpers.RETURN_AFTER_MS || 24 * 3600 * 1000);
+      shipment.extension_count = 0;
     }
 
     let smsResult = { sent: false, error: 'no recipient phone' };
@@ -747,7 +751,30 @@ async function updateTelemetry(req, res) {
       led_color: locker.led_color,
     });
   }
+  // ── RETURN_PICKING -> AVAILABLE (sender lấy hàng hoàn xong) ──
+  if (locker.status === S.RETURN_PICKING && locker.door_closed && !locker.has_item) {
+    console.log(`[RETURN COMPLETE] Locker #${locker.locker_id} — sender đã lấy hàng hoàn`);
 
+    if (locker.shipment_id && db.shipments.has(locker.shipment_id)) {
+      const shipment = db.shipments.get(locker.shipment_id);
+      shipment.return_completed_at = Date.now();
+      shipment.status = 'RETURNED';
+    }
+
+    for (const [key, record] of db.otps.entries()) {
+      if (record.locker_id === locker.locker_id) db.otps.delete(key);
+    }
+
+    helpers.clearLockerShipment(locker);
+    helpers.applyStatus(locker, S.AVAILABLE);
+    helpers.persistState();
+
+    return res.status(200).json({
+      success: true,
+      current_status: locker.status,
+      led_color: locker.led_color,
+    });
+  }
   // ── PICKING -> AVAILABLE (đóng cửa + hết hàng) ──
   if (locker.status === S.PICKING && locker.door_closed && !locker.has_item) {
     // ✅ Lấy info TRƯỚC khi clear locker
@@ -1031,4 +1058,7 @@ module.exports = {
   verifyAdminKey, 
   resendOtpByPhone,      // <-- THÊM
   cancelShipment,  
+  RETURN_AFTER_MS,              // <-- THÊM
+  EXTENSION_HOURS,              // <-- THÊM
+  MAX_EXTENSIONS,               // <-- THÊM
 };
