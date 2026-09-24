@@ -6,15 +6,8 @@
   <meta name="theme-color" content="#6366F1">
   <title>Smart Box — Tủ gửi đồ thông minh</title>
 
-  <!-- Tailwind CSS -->
+  <link rel="stylesheet" href="/assets/premium.css">
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Font Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-
-  <!-- Icons Lucide -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
   <script>
@@ -22,32 +15,11 @@
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Inter', 'system-ui', 'sans-serif'],
+            sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
             mono: ['JetBrains Mono', 'monospace'],
           },
           colors: {
-            brand: {
-              50:  '#EEF2FF',
-              100: '#E0E7FF',
-              500: '#6366F1',
-              600: '#4F46E5',
-              700: '#4338CA',
-            }
-          },
-          animation: {
-            'fade-in': 'fadeIn 0.5s ease-out',
-            'slide-up': 'slideUp 0.4s ease-out',
-            'pulse-slow': 'pulse 2s ease-in-out infinite',
-          },
-          keyframes: {
-            fadeIn: {
-              '0%': { opacity: '0' },
-              '100%': { opacity: '1' },
-            },
-            slideUp: {
-              '0%': { opacity: '0', transform: 'translateY(20px)' },
-              '100%': { opacity: '1', transform: 'translateY(0)' },
-            }
+            brand: { 50:'#EEF2FF', 100:'#E0E7FF', 500:'#6366F1', 600:'#4F46E5', 700:'#4338CA' }
           }
         }
       }
@@ -55,46 +27,34 @@
   </script>
 
   <style>
-    body {
-      -webkit-tap-highlight-color: transparent;
-      overscroll-behavior-y: contain;
-    }
-    .glass {
-      backdrop-filter: blur(12px);
-      background: rgba(255, 255, 255, 0.7);
-    }
+    body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; }
+    .glass { backdrop-filter: blur(12px); background: rgba(255,255,255,0.7); }
   </style>
 </head>
 
 <body class="font-sans bg-gradient-to-b from-slate-50 via-white to-slate-50 min-h-screen antialiased">
 
-  <!-- ═══════════════════════════════════════════ -->
-  <!-- HEADER                                       -->
-  <!-- ═══════════════════════════════════════════ -->
+  <!-- HEADER -->
   <header class="sticky top-0 z-50 glass border-b border-slate-200/60">
     <div class="max-w-md mx-auto px-5 h-14 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-md shadow-brand-500/30">
-          <i data-lucide="package" class="w-4.5 h-4.5 text-white" style="width:18px;height:18px;"></i>
-        </div>
+        <img src="/assets/uth-logo.png" alt="UTH" class="logo-uth h-8 w-auto">
+        <div class="w-px h-6 bg-slate-200"></div>
         <div>
-          <div class="font-bold text-slate-900 text-sm leading-none">SMART BOX</div>
+          <div class="font-extrabold text-slate-900 text-sm leading-none tracking-tight">SMART BOX</div>
           <div class="text-[10px] text-slate-500 leading-none mt-0.5">Tủ gửi đồ thông minh</div>
         </div>
       </div>
       <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-breathe"></span>
         <span class="text-[10px] font-semibold text-emerald-700" id="statusText">Online</span>
       </div>
     </div>
   </header>
 
-  <!-- ═══════════════════════════════════════════ -->
-  <!-- MAIN                                         -->
-  <!-- ═══════════════════════════════════════════ -->
   <main class="max-w-md mx-auto px-5 pt-8 pb-12">
 
-        <!-- Locker Badge (hiện khi user quét QR) -->
+    <!-- Locker Badge (hiện khi user quét QR) -->
     <div id="lockerBadge" class="hidden mb-5 p-4 rounded-2xl bg-gradient-to-r from-brand-50 to-indigo-50 border-2 border-brand-200 animate-slide-up">
       <div class="flex items-center gap-3">
         <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-lg shadow-brand-500/30 shrink-0">
@@ -110,23 +70,24 @@
       </div>
     </div>
 
-    <!-- Hero -->
-    <section class="text-center mb-8 animate-fade-in">
-      <h1 class="text-2xl font-extrabold text-slate-900 leading-tight mb-2">
-        Gửi & nhận đồ<br>
-        <span class="bg-gradient-to-r from-brand-500 to-brand-700 bg-clip-text text-transparent">không cần gặp mặt</span>
-      </h1>
-      <p class="text-sm text-slate-500 max-w-xs mx-auto">
-        Xác thực bằng OTP — Bảo mật tuyệt đối, hoạt động 24/7
-      </p>
+    <!-- Hero với Mesh Gradient -->
+    <section class="mesh-hero text-center mb-8 animate-slide-up" style="padding-top: 8px; padding-bottom: 16px;">
+      <div class="relative z-10">
+        <h1 class="text-3xl font-extrabold text-slate-900 leading-tight mb-2 tracking-tight">
+          Gửi & nhận đồ<br>
+          <span class="text-gradient">không cần gặp mặt</span>
+        </h1>
+        <p class="text-sm text-slate-500 max-w-xs mx-auto">
+          Xác thực bằng OTP — Bảo mật tuyệt đối, hoạt động 24/7
+        </p>
+      </div>
     </section>
 
     <!-- Action Cards -->
     <section class="space-y-3">
 
-      <!-- SEND -->
       <a href="/send.html"
-         class="group block relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 p-5 shadow-xl shadow-brand-500/25 active:scale-[0.98] transition-transform duration-150 animate-slide-up">
+         class="btn-shine group block relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 p-5 shadow-xl shadow-brand-500/25 animate-slide-up">
         <div class="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full"></div>
         <div class="absolute -right-2 -bottom-8 w-24 h-24 bg-white/10 rounded-full"></div>
         <div class="relative flex items-center gap-4">
@@ -141,10 +102,8 @@
         </div>
       </a>
 
-      <!-- RECEIVE -->
       <a href="/receive.html"
-         class="group block relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 shadow-xl shadow-emerald-500/25 active:scale-[0.98] transition-transform duration-150 animate-slide-up"
-         style="animation-delay: 0.05s;">
+         class="btn-shine group block relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 shadow-xl shadow-emerald-500/25 animate-slide-up stagger-2">
         <div class="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full"></div>
         <div class="absolute -right-2 -bottom-8 w-24 h-24 bg-white/10 rounded-full"></div>
         <div class="relative flex items-center gap-4">
@@ -159,21 +118,20 @@
         </div>
       </a>
 
-
     </section>
 
     <!-- Trust Badges -->
     <section class="mt-8 grid grid-cols-3 gap-3">
-      <div class="bg-white rounded-xl border border-slate-200/70 p-3 text-center shadow-sm">
-        <i data-lucide="shield-check" class="mx-auto text-brand-500 mb-1.5" style="width:20px;height:20px;"></i>
+      <div class="card-premium p-3 text-center animate-slide-up stagger-3">
+        <i data-lucide="shield-check" class="mx-auto text-brand-500 mb-1.5 animate-float" style="width:20px;height:20px;"></i>
         <div class="text-[10px] font-semibold text-slate-700 leading-tight">Bảo mật<br>OTP 6 số</div>
       </div>
-      <div class="bg-white rounded-xl border border-slate-200/70 p-3 text-center shadow-sm">
-        <i data-lucide="clock" class="mx-auto text-brand-500 mb-1.5" style="width:20px;height:20px;"></i>
+      <div class="card-premium p-3 text-center animate-slide-up stagger-4">
+        <i data-lucide="clock" class="mx-auto text-brand-500 mb-1.5 animate-float" style="width:20px;height:20px;"></i>
         <div class="text-[10px] font-semibold text-slate-700 leading-tight">Hoạt động<br>24/7</div>
       </div>
-      <div class="bg-white rounded-xl border border-slate-200/70 p-3 text-center shadow-sm">
-        <i data-lucide="zap" class="mx-auto text-brand-500 mb-1.5" style="width:20px;height:20px;"></i>
+      <div class="card-premium p-3 text-center animate-slide-up stagger-4">
+        <i data-lucide="zap" class="mx-auto text-brand-500 mb-1.5 animate-float" style="width:20px;height:20px;"></i>
         <div class="text-[10px] font-semibold text-slate-700 leading-tight">Gửi nhận<br>3 phút</div>
       </div>
     </section>
@@ -188,56 +146,53 @@
         </button>
       </div>
       <div id="lockersPreview" class="grid grid-cols-3 gap-2.5">
-        <div class="bg-slate-100 animate-pulse rounded-xl h-20"></div>
-        <div class="bg-slate-100 animate-pulse rounded-xl h-20"></div>
-        <div class="bg-slate-100 animate-pulse rounded-xl h-20"></div>
+        <div class="skeleton h-20"></div>
+        <div class="skeleton h-20"></div>
+        <div class="skeleton h-20"></div>
       </div>
     </section>
 
   </main>
 
-  <!-- ═══════════════════════════════════════════ -->
-  <!-- FOOTER                                       -->
-  <!-- ═══════════════════════════════════════════ -->
+  <!-- FOOTER -->
   <footer class="max-w-md mx-auto px-5 pb-8 pt-4">
-    <div class="text-center text-[10px] text-slate-400 leading-relaxed">
-      <div class="font-semibold text-slate-500 mb-0.5">Smart Box IoT System</div>
-      <div>Đồ án IoT • v1.0 • © 2026</div>
+    <div class="text-center">
+      <img src="/assets/uth-logo.png" alt="Trường Đại học Giao thông vận tải TP.HCM" class="logo-uth h-12 w-auto mx-auto mb-3 opacity-90">
+      <div class="text-[10px] text-slate-400 leading-relaxed">
+        <div class="font-semibold text-slate-500 mb-0.5">Smart Box IoT System</div>
+        <div>Đồ án tốt nghiệp • Trường ĐH GTVT TP.HCM</div>
+        <div class="mt-1">v1.0 • © 2026</div>
+      </div>
     </div>
   </footer>
 
-  <!-- ═══════════════════════════════════════════ -->
-  <!-- SCRIPTS                                      -->
-  <!-- ═══════════════════════════════════════════ -->
+  <script src="/assets/toast.js"></script>
   <script>
-    // Init icons
     lucide.createIcons();
 
     const API_BASE = window.location.origin;
 
-    // Status mapping
     const STATUS_MAP = {
-      'AVAILABLE':    { label: 'TRỐNG',     dot: 'bg-emerald-500', bg: 'bg-emerald-50',  border: 'border-emerald-200',  text: 'text-emerald-700' },
-      'PENDING_SENDER': { label: 'CHỜ XÁC THỰC', dot: 'bg-amber-500',   bg: 'bg-amber-50',    border: 'border-amber-200',    text: 'text-amber-700' },
-      'RESERVED':     { label: 'GIỮ CHỖ',   dot: 'bg-amber-500',   bg: 'bg-amber-50',    border: 'border-amber-200',    text: 'text-amber-700' },
-      'DEPOSITING':   { label: 'ĐANG GỬI',  dot: 'bg-amber-500',   bg: 'bg-amber-50',    border: 'border-amber-200',    text: 'text-amber-700' },
-      'OCCUPIED':     { label: 'CÓ HÀNG',   dot: 'bg-rose-500',    bg: 'bg-rose-50',     border: 'border-rose-200',     text: 'text-rose-700' },
-      'PICKING':      { label: 'ĐANG LẤY',  dot: 'bg-amber-500',   bg: 'bg-amber-50',    border: 'border-amber-200',    text: 'text-amber-700' },
-      'MAINTENANCE':  { label: 'BẢO TRÌ',   dot: 'bg-slate-500',   bg: 'bg-slate-50',    border: 'border-slate-200',    text: 'text-slate-700' },
-      'EMERGENCY':    { label: 'KHẨN CẤP',  dot: 'bg-red-500',     bg: 'bg-red-50',      border: 'border-red-200',      text: 'text-red-700' },
+      'AVAILABLE':      { label: 'TRỐNG',     dot: 'bg-emerald-500', border: 'border-emerald-200', text: 'text-emerald-700' },
+      'PENDING_SENDER': { label: 'CHỜ XÁC THỰC', dot: 'bg-amber-500',   border: 'border-amber-200',   text: 'text-amber-700' },
+      'RESERVED':       { label: 'GIỮ CHỖ',   dot: 'bg-amber-500',   border: 'border-amber-200',   text: 'text-amber-700' },
+      'DEPOSITING':     { label: 'ĐANG GỬI',  dot: 'bg-amber-500',   border: 'border-amber-200',   text: 'text-amber-700' },
+      'OCCUPIED':       { label: 'CÓ HÀNG',   dot: 'bg-rose-500',    border: 'border-rose-200',    text: 'text-rose-700' },
+      'PICKING':        { label: 'ĐANG LẤY',  dot: 'bg-amber-500',   border: 'border-amber-200',   text: 'text-amber-700' },
+      'MAINTENANCE':    { label: 'BẢO TRÌ',   dot: 'bg-slate-500',   border: 'border-slate-200',   text: 'text-slate-700' },
+      'EMERGENCY':      { label: 'KHẨN CẤP',  dot: 'bg-red-500',     border: 'border-red-200',     text: 'text-red-700' },
     };
 
     async function refreshLockers() {
       try {
         const res = await fetch(`${API_BASE}/api/v1/lockers`);
         const data = await res.json();
-
         document.getElementById('statusText').textContent = 'Online';
 
         const html = data.lockers.map(L => {
           const s = STATUS_MAP[L.status] || STATUS_MAP['MAINTENANCE'];
           return `
-            <div class="bg-white rounded-xl border ${s.border} p-3 shadow-sm">
+            <div class="card-premium p-3 animate-slide-up">
               <div class="flex items-center justify-between mb-2">
                 <span class="font-mono text-xs font-bold text-slate-900">#${L.locker_id}</span>
                 <span class="w-2 h-2 rounded-full ${s.dot}"></span>
@@ -251,11 +206,10 @@
         document.getElementById('lockersPreview').innerHTML = html;
       } catch (e) {
         document.getElementById('statusText').textContent = 'Offline';
-        console.error(e);
       }
     }
 
-        // ─── Xử lý QR scan (?locker=1) ───
+    // ─── Xử lý QR scan (?locker=1) ───
     const urlParams = new URLSearchParams(window.location.search);
     const lockerFromQR = urlParams.get('locker');
 
@@ -265,7 +219,6 @@
       badgeText.textContent = `Tủ #${lockerFromQR}`;
       badge.classList.remove('hidden');
 
-      // Đổi href của 2 nút chính để truyền locker
       document.querySelector('a[href="/send.html"]').href = `/send.html?locker=${lockerFromQR}`;
       document.querySelector('a[href="/receive.html"]').href = `/receive.html?locker=${lockerFromQR}`;
 

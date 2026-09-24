@@ -1,0 +1,315 @@
+/* ═══════════════════════════════════════════════════════════
+   SMART BOX — PREMIUM DESIGN SYSTEM
+   Noise + Grid + Glow + Float + Confetti + Toast
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─── 1. FONT ─── */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap');
+
+:root {
+  --shadow-sm:   0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-md:   0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.06);
+  --shadow-lg:   0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.08);
+  --shadow-xl:   0 20px 25px -5px rgba(15, 23, 42, 0.10), 0 8px 10px -6px rgba(15, 23, 42, 0.10);
+  --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.25);
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-mono, .otp-input, code {
+  font-family: 'JetBrains Mono', 'SF Mono', monospace !important;
+}
+
+/* ─── 2. NOISE TEXTURE OVERLAY ─── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' /%3E%3C/svg%3E");
+}
+
+/* ─── 3. GRID PATTERN (cho hero) ─── */
+.grid-pattern {
+  background-image:
+    linear-gradient(rgba(99, 102, 241, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.06) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+}
+
+/* ─── 4. MESH GRADIENT HERO ─── */
+.mesh-hero {
+  position: relative;
+  overflow: hidden;
+}
+.mesh-hero::before,
+.mesh-hero::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+.mesh-hero::before {
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, #818CF8, transparent 70%);
+  top: -150px; left: -100px;
+  animation: floatSlow 12s ease-in-out infinite;
+}
+.mesh-hero::after {
+  width: 350px; height: 350px;
+  background: radial-gradient(circle, #34D399, transparent 70%);
+  top: -80px; right: -120px;
+  animation: floatSlow 15s ease-in-out infinite reverse;
+  animation-delay: -3s;
+}
+
+/* ─── 5. CARD PREMIUM ─── */
+.card-premium {
+  position: relative;
+  background: white;
+  border-radius: 20px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  transition: transform 0.4s var(--ease-out), box-shadow 0.4s var(--ease-out);
+}
+.card-premium::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  transition: left 0.6s var(--ease-out);
+  pointer-events: none;
+}
+.card-premium:hover::after {
+  left: 100%;
+}
+.card-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-xl), var(--shadow-glow);
+}
+
+/* ─── 6. BUTTON SHINE ─── */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s var(--ease-bounce), box-shadow 0.3s var(--ease-out);
+}
+.btn-shine::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -75%;
+  width: 50%; height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.35), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.7s var(--ease-out);
+}
+.btn-shine:hover::before {
+  left: 125%;
+}
+.btn-shine:active {
+  transform: scale(0.97);
+}
+
+/* ─── 7. FLOAT ANIMATION ─── */
+@keyframes floatSlow {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(30px, -20px) scale(1.05); }
+  66%      { transform: translate(-20px, 20px) scale(0.95); }
+}
+
+@keyframes floatY {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+.animate-float {
+  animation: floatY 3s ease-in-out infinite;
+}
+
+/* ─── 8. RADAR PULSE (thay radar cũ) ─── */
+@keyframes radarPulse {
+  0%   { transform: scale(1);   opacity: 0.7; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+.radar-ring {
+  animation: radarPulse 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite !important;
+}
+
+/* ─── 9. SHIMMER SKELETON ─── */
+@keyframes shimmer {
+  0%   { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #F1F5F9 0%,
+    #E2E8F0 50%,
+    #F1F5F9 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s linear infinite;
+  border-radius: 12px;
+}
+
+/* ─── 10. BREATHE (thay animate-pulse cũ) ─── */
+@keyframes breathe {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.6; transform: scale(0.95); }
+}
+.animate-breathe {
+  animation: breathe 2.5s ease-in-out infinite;
+}
+
+/* ─── 11. CHECKMARK DRAW ─── */
+.checkmark-draw path {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: drawCheck 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+  animation-delay: 0.2s;
+}
+@keyframes drawCheck {
+  to { stroke-dashoffset: 0; }
+}
+
+/* ─── 12. SCALE IN (cho success) ─── */
+@keyframes scaleInBounce {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-scale-in {
+  animation: scaleInBounce 0.5s var(--ease-bounce) both;
+}
+
+/* ─── 13. SLIDE IN FROM BOTTOM ─── */
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up {
+  animation: slideInUp 0.5s var(--ease-out) both;
+}
+
+/* ─── 14. TOAST SYSTEM ─── */
+#toast-container {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: calc(100vw - 32px);
+  width: 360px;
+  pointer-events: none;
+}
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12), 0 4px 6px rgba(15, 23, 42, 0.08);
+  border: 1px solid #E2E8F0;
+  animation: slideInUp 0.4s var(--ease-bounce);
+  font-size: 13px;
+  font-weight: 500;
+  color: #0F172A;
+}
+.toast.removing {
+  animation: slideOutUp 0.3s ease-in forwards;
+}
+@keyframes slideOutUp {
+  to { opacity: 0; transform: translateY(-20px) scale(0.95); }
+}
+.toast-icon {
+  width: 20px; height: 20px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.toast.success { border-left: 3px solid #10B981; }
+.toast.success .toast-icon { color: #10B981; }
+.toast.error   { border-left: 3px solid #EF4444; }
+.toast.error .toast-icon { color: #EF4444; }
+.toast.warning { border-left: 3px solid #F59E0B; }
+.toast.warning .toast-icon { color: #F59E0B; }
+.toast.info    { border-left: 3px solid #6366F1; }
+.toast.info .toast-icon { color: #6366F1; }
+
+/* ─── 15. CONFETTI ─── */
+.confetti-piece {
+  position: fixed;
+  width: 10px; height: 10px;
+  top: -20px;
+  z-index: 10000;
+  pointer-events: none;
+  animation: confettiFall 3s linear forwards;
+}
+@keyframes confettiFall {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+/* ─── 16. GRADIENT TEXT ─── */
+.text-gradient {
+  background: linear-gradient(135deg, #6366F1 0%, #4F46E5 50%, #4338CA 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.text-gradient-emerald {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ─── 17. FOCUS RING ─── */
+input:focus, button:focus-visible, textarea:focus {
+  outline: none;
+}
+
+/* ─── 18. STAGGER DELAY HELPERS ─── */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.10s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.20s; }
+
+/* ─── 19. LOGO WRAPPER ─── */
+.logo-uth {
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.08));
+}
+.logo-uth-dark {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 10px;
+  padding: 6px 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* ─── 20. REDUCED MOTION ─── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
