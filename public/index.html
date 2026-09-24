@@ -81,7 +81,26 @@
           Xác thực bằng OTP — Bảo mật tuyệt đối, hoạt động 24/7
         </p>
       </div>
-    </section>
+        </section>
+
+    <!-- ═══ EMPTY STATE (hiện khi cả 3 tủ OCCUPIED) ═══ -->
+    <div id="emptyState" class="hidden mb-6 p-5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 animate-slide-up">
+      <div class="flex items-start gap-3">
+        <div class="w-12 h-12 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center shrink-0">
+          <i data-lucide="clock-alert" class="text-amber-600" style="width:24px;height:24px;"></i>
+        </div>
+        <div class="flex-1">
+          <div class="font-extrabold text-amber-900 text-base leading-tight mb-1">Tất cả tủ đang được sử dụng</div>
+          <div class="text-xs text-amber-800/80 leading-relaxed">
+            Vui lòng quay lại sau <b>5-10 phút</b>. Hệ thống sẽ tự cập nhật khi có tủ trống.
+          </div>
+          <button onclick="refreshLockers()" class="mt-3 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold transition flex items-center gap-1.5">
+            <i data-lucide="refresh-cw" style="width:12px;height:12px;"></i>
+            Kiểm tra lại ngay
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Action Cards -->
     <section class="space-y-3">
@@ -136,20 +155,24 @@
       </div>
     </section>
 
-    <!-- Live Lockers Preview -->
+      <!-- Live Lockers Preview -->
     <section class="mt-8">
+      ... (giữ nguyên)
+    </section>
+
+    <!-- ═══ LỊCH SỬ ═══ -->
+    <section id="historySection" class="mt-8 hidden">
       <div class="flex items-center justify-between mb-3">
-        <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wide">Trạng thái tủ</h2>
-        <button onclick="refreshLockers()" class="text-[11px] text-brand-600 font-semibold flex items-center gap-1 active:opacity-60">
-          <i data-lucide="refresh-cw" style="width:12px;height:12px;"></i>
-          Làm mới
+        <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+          <i data-lucide="history" style="width:14px;height:14px;"></i>
+          Lịch sử gần đây
+        </h2>
+        <button onclick="clearAllHistory()" class="text-[11px] text-rose-500 hover:text-rose-700 font-semibold flex items-center gap-1 active:opacity-60">
+          <i data-lucide="trash-2" style="width:12px;height:12px;"></i>
+          Xóa
         </button>
       </div>
-      <div id="lockersPreview" class="grid grid-cols-3 gap-2.5">
-        <div class="skeleton h-20"></div>
-        <div class="skeleton h-20"></div>
-        <div class="skeleton h-20"></div>
-      </div>
+      <div id="historyList" class="space-y-2"></div>
     </section>
 
   </main>
@@ -203,7 +226,17 @@
           `;
         }).join('');
 
-        document.getElementById('lockersPreview').innerHTML = html;
+               document.getElementById('lockersPreview').innerHTML = html;
+
+        // Check empty state: cả 3 tủ đều OCCUPIED
+        const allOccupied = data.lockers.every(L => L.status === 'OCCUPIED');
+        const emptyEl = document.getElementById('emptyState');
+        if (allOccupied) {
+          emptyEl.classList.remove('hidden');
+          lucide.createIcons();
+        } else {
+          emptyEl.classList.add('hidden');
+        }
       } catch (e) {
         document.getElementById('statusText').textContent = 'Offline';
       }
@@ -230,6 +263,64 @@
       url.searchParams.delete('locker');
       window.location.href = url.toString();
     }
+
+        // ═══ RENDER LỊCH SỬ ═══
+    function renderHistory() {
+      const arr = window.getHistory ? getHistory() : [];
+      const section = document.getElementById('historySection');
+      const list = document.getElementById('historyList');
+
+      if (!arr.length) {
+        section.classList.add('hidden');
+        return;
+      }
+
+      section.classList.remove('hidden');
+
+      const FMT_TIME = ts => {
+        const d = new Date(ts);
+        const today = new Date();
+        const isToday = d.toDateString() === today.toDateString();
+        const time = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        if (isToday) return `Hôm nay ${time}`;
+        return `${d.getDate()}/${d.getMonth() + 1} ${time}`;
+      };
+
+      const FMT_PHONE = v => v ? v.replace(/(\+84|0)(\d{3})(\d{3})(\d{3,4})/, '$2 $3 $4') : '';
+
+      list.innerHTML = arr.slice(0, 5).map(h => {
+        const isSend = h.type === 'send';
+        return `
+          <div class="card-premium p-3 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl ${isSend ? 'bg-brand-50 border-brand-100' : 'bg-emerald-50 border-emerald-100'} border flex items-center justify-center shrink-0">
+              <i data-lucide="${isSend ? 'send' : 'package-open'}" class="${isSend ? 'text-brand-600' : 'text-emerald-600'}" style="width:18px;height:18px;"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-0.5">
+                <span class="text-xs font-bold text-slate-900">${isSend ? 'Gửi' : 'Nhận'} • Tủ #${h.locker_id}</span>
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              </div>
+              <div class="text-[10px] text-slate-500 font-mono truncate">
+                ${isSend ? FMT_PHONE(h.recipient_phone) : FMT_PHONE(h.recipient_phone)}
+                ${h.shipment_id ? `• ${h.shipment_id}` : ''}
+              </div>
+            </div>
+            <div class="text-[10px] text-slate-400 font-mono whitespace-nowrap">${FMT_TIME(h.at)}</div>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function clearAllHistory() {
+      if (!confirm('Xóa toàn bộ lịch sử?')) return;
+      if (window.clearHistory) clearHistory();
+      renderHistory();
+      if (window.showToast) showToast('Đã xóa lịch sử', 'success');
+    }
+
+    renderHistory();
 
     refreshLockers();
     setInterval(refreshLockers, 3000);

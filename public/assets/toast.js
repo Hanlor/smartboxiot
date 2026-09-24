@@ -52,7 +52,76 @@
       setTimeout(() => p.remove(), 4000);
     }
   };
+  // ─── SOUND: phát tiếng "ting" khi OTP đến ───
+  window.playNotificationSound = function() {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
 
+      // Tạo 2 nốt: C5 (523Hz) → E5 (659Hz)
+      const now = ctx.currentTime;
+
+      [523.25, 659.25].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+
+        gain.gain.setValueAtTime(0, now + i * 0.12);
+        gain.gain.linearRampToValueAtTime(0.3, now + i * 0.12 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.35);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + i * 0.12);
+        osc.stop(now + i * 0.12 + 0.4);
+      });
+
+      setTimeout(() => ctx.close(), 800);
+    } catch (e) {}
+  };
+
+  // ─── VIBRATE: rung điện thoại ───
+  window.vibrateNotification = function(pattern) {
+    if (navigator.vibrate) {
+      navigator.vibrate(pattern || [100, 50, 100, 50, 200]);
+    }
+  };
+
+  // ─── COMBO: Sound + Rung ───
+  window.notifyUser = function() {
+    window.playNotificationSound();
+    window.vibrateNotification();
+  };
   // ─── REPLACE ALERT GLOBALLY (không bắt buộc) ───
   // window.alert = (msg) => window.showToast(msg, 'info');
+  // ═══════════════════════════════════════════════════════════
+  // HISTORY — Lịch sử đơn hàng (localStorage)
+  // ═══════════════════════════════════════════════════════════
+  const HISTORY_KEY = 'smartbox_history';
+  const HISTORY_MAX = 20;
+
+  window.saveHistory = function(entry) {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      arr.unshift(entry);
+      if (arr.length > HISTORY_MAX) arr.length = HISTORY_MAX;
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(arr));
+      console.log('[History] Saved:', entry);
+    } catch (e) {}
+  };
+
+  window.getHistory = function() {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+  };
+
+  window.clearHistory = function() {
+    try { localStorage.removeItem(HISTORY_KEY); } catch (e) {}
+  };  
 })();

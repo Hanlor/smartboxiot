@@ -503,6 +503,7 @@
         if (state.timerInterval) clearInterval(state.timerInterval);
         showStep(3);
         startPollingDeposit();
+        // Chuẩn bị: khi tủ chuyển OCCUPIED sẽ có SMS người nhận
       } catch (e) {
         btn.disabled = false;
         btn.innerHTML = '<i data-lucide="shield-check" style="width:16px;height:16px;"></i> Xác thực';
@@ -562,14 +563,28 @@
           const locker = data.lockers.find(L => L.locker_id === state.lockerId);
           if (!locker) return;
 
-          if (locker.status === 'OCCUPIED') {
+                    if (locker.status === 'OCCUPIED') {
             if (state.pollInterval) clearInterval(state.pollInterval);
             if (state.depositTimeout) clearTimeout(state.depositTimeout);
             document.getElementById('shipmentId').textContent = state.shipmentId;
             document.getElementById('recipientDisplay').textContent = PHONE_FMT(state.recipientPhone);
-            showStep(4);
+                        showStep(4);
             if (window.fireConfetti) fireConfetti(70);
             if (window.showToast) showToast('Gửi hàng thành công!', 'success');
+            if (window.notifyUser) notifyUser();
+
+            // ═══ LƯU LỊCH SỬ ═══
+            if (window.saveHistory) {
+              saveHistory({
+                type: 'send',
+                shipment_id: state.shipmentId,
+                locker_id: state.lockerId,
+                sender_phone: state.senderPhone,
+                recipient_phone: state.recipientPhone,
+                at: Date.now(),
+                status: 'success',
+              });
+            }
           }
         } catch (e) {}
       }, 2000);

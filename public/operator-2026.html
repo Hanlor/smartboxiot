@@ -443,6 +443,7 @@
           await callEmergencyUnlock({ adminKey, locker_id: lockerId });
           log(`🚨 Đã mở khẩn cấp TỦ #${lockerId}`);
           if (window.showToast) showToast(`Đã mở khẩn cấp Tủ #${lockerId}`, 'warning');
+          if (window.notifyUser) notifyUser();
         },
       });
     }

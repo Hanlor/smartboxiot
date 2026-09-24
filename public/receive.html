@@ -366,12 +366,24 @@
           const locker = data.lockers.find(L => L.locker_id === state.lockerId);
           if (!locker) return;
 
-          if (locker.status === 'AVAILABLE') {
+                    if (locker.status === 'AVAILABLE') {
             if (state.pollInterval) clearInterval(state.pollInterval);
             if (state.pickupTimeout) clearTimeout(state.pickupTimeout);
             showStep(3);
             if (window.fireConfetti) fireConfetti(60);
             if (window.showToast) showToast('Đã lấy hàng thành công!', 'success');
+            if (window.notifyUser) notifyUser();
+
+            // ═══ LƯU LỊCH SỬ ═══
+            if (window.saveHistory) {
+              saveHistory({
+                type: 'receive',
+                locker_id: state.lockerId,
+                recipient_phone: state.recipientPhone,
+                at: Date.now(),
+                status: 'success',
+              });
+            }
           }
         } catch (e) {}
       }, 2000);
