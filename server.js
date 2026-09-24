@@ -74,6 +74,7 @@ const db = {
   shipments: new Map(),
   otps: new Map(),
   otpSecurity: new Map(),
+  hardware: new Map(),   // <-- THÊM
 };
 
 function createLocker(lockerId, size) {
@@ -560,6 +561,162 @@ app.get('/api/v1/qr', async (req, res) => {
     });
   }
 });
+// ═══════════════════════════════════════════════════════════
+// HARDWARE HEALTH MONITORING
+// ═══════════════════════════════════════════════════════════
+const HEALTH_TIMEOUT_MS = 60000;  // 60s không heartbeat = offline
+
+/**
+ * POST /api/v1/telemetry/health
+ * ESP32 gửi định kỳ 30s
+ */
+app.post('/api/v1/telemetry/health', (req, res) => {
+  try {
+    const {
+      device_id,
+      uptime_s,
+      wifi_rssi,
+      free_ram,
+      sensors,
+      warnings,
+      boot_self_test,
+    } = req.body || {};
+
+    if (!device_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'device_id is required',
+      });
+    }
+
+    const now = Date.now();
+    const prev = db.hardware.get(device_id);
+
+    // Merge boot_self_test: giữ lần gần nhất nếu có, không xóa
+    const selfTest = boot_self_test || (prev && prev.boot_self_test) || null;
+
+    const report = {
+      device_id,
+      last_seen: now,
+      first_seen: prev ? prev.first_seen : now,
+      uptime_s: uptime_s || 0,
+      wifi_rssi: wifi_rssi || -100,
+      free_ram: free_ram || 0,
+      sensors: sensors || {},
+      warnings: warnings || [],
+      boot_self_test: selfTest,
+      heartbeat_count: prev ? (prev.heartbeat_count || 0) + 1 : 1,
+      online: true,
+    };
+
+    db.hardware.set(device_id, report);
+
+    console.log(`[HEALTH] ${device_id} · RSSI=${wifi_rssi}dBm · RAM=${Math.round(free_ram / 1024)}KB · Warns=${report.warnings.length}`);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Health recorded',
+      next_heartbeat_s: 30,
+    });
+  } catch (err) {
+    console.error('[HEALTH] Error:', err.message);
+    return res.status(500).json({ success: false, message: 'Internal error' });
+  }
+});
+
+/**
+ * GET /api/v1/admin/hardware-health
+ * Trả về tất cả device đã đăng ký
+ */
+app.get('/api/v1/admin/hardware-health', (req, res) => {
+  const now = Date.now();
+  const list = [];
+
+  for (const [id, h] of db.hardware.entries()) {
+    const age = now - h.last_seen;
+    const online = age < HEALTH_TIMEOUT_MS;
+
+    list.push({
+      device_id: id,
+      online,
+      last_seen_ago_s: Math.round(age / 1000),
+      uptime_s: h.uptime_s,
+      wifi_rssi: h.wifi_rssi,
+      free_ram_kb: Math.round(h.free_ram / 1024),
+      sensors: h.sensors,
+      warnings: h.warnings,
+      boot_self_test: h.boot_self_test,
+      heartbeat_count: h.heartbeat_count,
+      first_seen: h.first_seen,
+      health_score: calcHealthScore(h, online),
+    });
+  }
+
+  list.sort((a, b) => a.device_id.localeCompare(b.device_id));
+
+  return res.json({
+    success: true,
+    devices: list,
+    total: list.length,
+    online: list.filter(d => d.online).length,
+    warnings_total: list.reduce((s, d) => s + d.warnings.length, 0),
+    server_time: now,
+  });
+});
+
+/**
+ * POST /api/v1/admin/clear-hardware
+ * Xóa hết device (dùng khi test)
+ */
+app.post('/api/v1/admin/clear-hardware', (req, res) => {
+  const { adminKey } = req.body || {};
+  const ADMIN_SECRET = process.env.ADMIN_SECRET_KEY || 'admin@smartbox123';
+  if (adminKey !== ADMIN_SECRET) {
+    return res.status(403).json({ success: false, message: 'Sai mật khẩu' });
+  }
+  db.hardware.clear();
+  return res.json({ success: true, message: 'Đã xóa toàn bộ hardware log' });
+});
+
+/**
+ * Helper: tính health score 0-100
+ */
+function calcHealthScore(h, online) {
+  if (!online) return 0;
+
+  let score = 100;
+
+  // WiFi yếu
+  if (h.wifi_rssi < -80) score -= 20;
+  else if (h.wifi_rssi < -70) score -= 10;
+
+  // RAM thấp
+  if (h.free_ram < 20000) score -= 30;
+  else if (h.free_ram < 50000) score -= 15;
+
+  // Warnings
+  score -= h.warnings.length * 15;
+
+  // Boot self-test failed
+  if (h.boot_self_test && h.boot_self_test.failed > 0) {
+    score -= h.boot_self_test.failed * 10;
+  }
+
+  return Math.max(0, Math.min(100, score));
+}
+
+// Auto-mark offline mỗi 10s — chỉ để log
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, h] of db.hardware.entries()) {
+    const wasOnline = h.online;
+    const isOnline = (now - h.last_seen) < HEALTH_TIMEOUT_MS;
+    if (wasOnline && !isOnline) {
+      console.warn(`⚠️  [HEALTH] ${id} went OFFLINE (last seen ${Math.round((now - h.last_seen) / 1000)}s ago)`);
+    }
+    h.online = isOnline;
+  }
+}, 10000).unref();
 app.get('/health', (_req, res) => {
   res.json({ success: true, service: 'smart-box-api', uptime_s: Math.round(process.uptime()) });
 });

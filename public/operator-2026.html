@@ -160,8 +160,28 @@
         <div id="lockersGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
       </section>
 
+            <!-- ═══ HARDWARE HEALTH ═══ -->
       <section class="mb-6">
-        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Màn hình LCD</h2>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-2">
+            <i data-lucide="activity" style="width:14px;height:14px;"></i>
+            Sức khỏe phần cứng
+          </h2>
+          <div class="flex items-center gap-2">
+            <span id="healthSummary" class="text-[10px] text-slate-500 font-mono">--</span>
+            <button onclick="refreshHardware()" class="text-[10px] text-brand-400 hover:text-brand-300 font-semibold flex items-center gap-1">
+              <i data-lucide="refresh-cw" style="width:11px;height:11px;"></i>
+              Làm mới
+            </button>
+          </div>
+        </div>
+
+        <div id="hardwareGrid" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="bg-slate-800/30 border border-slate-700 rounded-xl p-4 text-center text-xs text-slate-500">
+            Chưa có thiết bị nào gửi heartbeat
+          </div>
+        </div>
+      </section>
         <div class="bg-black border-4 border-slate-700 rounded-2xl p-4 shadow-2xl">
           <div id="lcdPreview" class="font-mono text-[13px] leading-6 text-emerald-400 whitespace-pre">
             <div>--- TU SMART BOX ---</div>
@@ -490,7 +510,167 @@
       el.insertBefore(div, el.firstChild);
       while (el.children.length > 50) el.removeChild(el.lastChild);
     }
+    // ═══════════════════════════════════════════════════════
+    // HARDWARE HEALTH PANEL
+    // ═══════════════════════════════════════════════════════
+    let hardwareTimer = null;
 
+    function scoreColor(score) {
+      if (score >= 80) return { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-400', dot: 'bg-emerald-400', label: 'Khỏe mạnh' };
+      if (score >= 50) return { bg: 'bg-amber-500/10',   border: 'border-amber-500/30',   text: 'text-amber-400',   dot: 'bg-amber-400',   label: 'Cần chú ý' };
+      return                  { bg: 'bg-rose-500/10',    border: 'border-rose-500/30',    text: 'text-rose-400',    dot: 'bg-rose-400',    label: 'Có vấn đề' };
+    }
+
+    function wifiLabel(rssi) {
+      if (rssi >= -60) return { label: 'Rất tốt', color: 'text-emerald-400' };
+      if (rssi >= -70) return { label: 'Tốt',     color: 'text-emerald-400' };
+      if (rssi >= -80) return { label: 'Yếu',     color: 'text-amber-400' };
+      return              { label: 'Rất yếu',     color: 'text-rose-400' };
+    }
+
+    function sensorIcon(status) {
+      if (status === 'ok')    return '<span class="text-emerald-400">●</span>';
+      if (status === 'slow')  return '<span class="text-amber-400">●</span>';
+      if (status === 'flaky') return '<span class="text-amber-400">●</span>';
+      if (status === 'stuck') return '<span class="text-rose-400">●</span>';
+      return '<span class="text-slate-500">●</span>';
+    }
+
+    async function refreshHardware() {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/admin/hardware-health`);
+        const data = await res.json();
+
+        document.getElementById('healthSummary').textContent =
+          `${data.online}/${data.total} online · ${data.warnings_total} cảnh báo`;
+
+        const grid = document.getElementById('hardwareGrid');
+
+        if (!data.devices.length) {
+          grid.innerHTML = `
+            <div class="bg-slate-800/30 border border-slate-700 rounded-xl p-4 text-center text-xs text-slate-500 col-span-full">
+              Chưa có thiết bị nào gửi heartbeat
+            </div>
+          `;
+          return;
+        }
+
+        grid.innerHTML = data.devices.map(d => {
+          const sc = d.online ? scoreColor(d.health_score) : scoreColor(0);
+          const wifi = wifiLabel(d.wifi_rssi);
+
+          // Sensor grid: mỗi tủ 3 icons (door, item, servo)
+          const sensorRows = ['1', '2', '3'].map(n => {
+            const s = d.sensors[`locker_${n}`] || {};
+            return `
+              <div class="bg-slate-900/50 rounded-lg px-2 py-1.5 flex items-center justify-between">
+                <span class="text-[10px] text-slate-500 font-mono">#${n}</span>
+                <div class="flex gap-1 text-[13px] leading-none">
+                  ${sensorIcon(s.door)}${sensorIcon(s.item)}${sensorIcon(s.servo)}
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          // Boot self-test summary
+          let selfTestHtml = '';
+          if (d.boot_self_test) {
+            const b = d.boot_self_test;
+            const stColor = b.failed === 0 ? 'text-emerald-400' : 'text-rose-400';
+            selfTestHtml = `
+              <div class="mt-2 pt-2 border-t border-slate-700/50">
+                <div class="flex items-center justify-between text-[10px]">
+                  <span class="text-slate-500">Boot self-test</span>
+                  <span class="font-bold ${stColor}">${b.passed}/${b.total} OK</span>
+                </div>
+              </div>
+            `;
+          }
+
+          // Warnings
+          let warnsHtml = '';
+          if (d.warnings.length > 0) {
+            warnsHtml = `
+              <div class="mt-2 pt-2 border-t border-slate-700/50 space-y-1">
+                ${d.warnings.map(w => `
+                  <div class="text-[10px] text-amber-400 flex items-center gap-1">
+                    <i data-lucide="alert-triangle" style="width:10px;height:10px;"></i>
+                    <span class="font-mono">${w}</span>
+                  </div>
+                `).join('')}
+              </div>
+            `;
+          }
+
+          return `
+            <div class="${sc.bg} border ${sc.border} rounded-xl p-4">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full ${sc.dot} ${d.online ? 'animate-breathe' : ''}"></span>
+                  <span class="font-mono font-bold text-white text-sm">${d.device_id}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] font-bold ${sc.text}">${sc.label}</span>
+                  <span class="text-[11px] font-extrabold ${sc.text} font-mono">${d.health_score}</span>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2 text-[10px] mb-3">
+                <div class="bg-slate-900/50 rounded-lg px-2 py-1.5">
+                  <div class="text-slate-500 mb-0.5">WiFi RSSI</div>
+                  <div class="font-mono font-bold ${wifi.color}">${d.wifi_rssi} dBm · ${wifi.label}</div>
+                </div>
+                <div class="bg-slate-900/50 rounded-lg px-2 py-1.5">
+                  <div class="text-slate-500 mb-0.5">RAM trống</div>
+                  <div class="font-mono font-bold text-white">${d.free_ram_kb} KB</div>
+                </div>
+                <div class="bg-slate-900/50 rounded-lg px-2 py-1.5">
+                  <div class="text-slate-500 mb-0.5">Uptime</div>
+                  <div class="font-mono font-bold text-white">${Math.floor(d.uptime_s/3600)}h ${Math.floor((d.uptime_s%3600)/60)}m</div>
+                </div>
+                <div class="bg-slate-900/50 rounded-lg px-2 py-1.5">
+                  <div class="text-slate-500 mb-0.5">Heartbeat</div>
+                  <div class="font-mono font-bold text-white">${d.heartbeat_count}x · ${d.last_seen_ago_s}s</div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2 mb-1">
+                ${sensorRows}
+              </div>
+              <div class="text-[9px] text-slate-500 text-center mb-1">Cửa · Hàng · Servo</div>
+
+              ${selfTestHtml}
+              ${warnsHtml}
+            </div>
+          `;
+        }).join('');
+
+        lucide.createIcons();
+      } catch (e) {
+        console.error('[HW] Fetch error:', e);
+      }
+    }
+
+    // Khởi động poll hardware khi vào dashboard
+    function startHardwarePoll() {
+      if (hardwareTimer) clearInterval(hardwareTimer);
+      refreshHardware();
+      hardwareTimer = setInterval(refreshHardware, 5000);
+    }
+
+    // Hook vào showDashboard
+    const origShowDashboard = showDashboard;
+    window.showDashboard = function() {
+      origShowDashboard();
+      startHardwarePoll();
+    };
+
+    // Hook vào logout để dừng poll
+    const origHandleLogout = handleLogout;
+    window.handleLogout = function() {
+      if (hardwareTimer) clearInterval(hardwareTimer);
+      origHandleLogout();
+    };
     (async () => {
       if (adminKey) {
         try {
