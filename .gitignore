@@ -1,5 +1,24 @@
+# Dependencies
 node_modules/
+
+# Environment (KHÔNG commit)
 .env
-*.log
-.DS_Store
+.env.local
+
+# State files (tự sinh, không commit)
 state.json
+archived_shipments.json
+*.sqlite
+*.sqlite3
+*.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
