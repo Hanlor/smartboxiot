@@ -58,9 +58,15 @@ function getLockers(req, res) {
 
   const lockers = [1, 2, 3].map((id) => helpers.publicLockerView(db.lockers.get(id)));
 
+  // Thông tin hardware tổng hợp
+  const hardware = helpers.getHardwareStatus
+    ? helpers.getHardwareStatus()
+    : { online: true, device_count: 0, devices: [] };
+
   return res.status(200).json({
     success: true,
     lockers,
+    hardware,                      // <-- THÊM
     lcd_preview: helpers.generateLcdPreview(),
   });
 }
@@ -76,6 +82,15 @@ async function createShipment(req, res) {
   const { sender_phone, recipient_phone, locker_id } = req.body || {};
 
   helpers.expireReservedLockers();
+
+  // 🚫 Check hardware online TRƯỚC MỌI THỨ
+  if (helpers.isHardwareOnline && !helpers.isHardwareOnline()) {
+    return res.status(503).json({
+      success: false,
+      message: 'Hệ thống tủ đang tạm ngừng. Vui lòng thử lại sau ít phút.',
+      hardware_offline: true,
+    });
+  }
 
   if (!isNonEmptyString(sender_phone) || !isNonEmptyString(recipient_phone)) {
     return res.status(400).json({

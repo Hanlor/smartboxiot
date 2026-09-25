@@ -394,7 +394,23 @@
         setStatus('ONLINE');
 
         // Render lockers
-        const html = data.lockers.map(L => {
+                const html = data.lockers.map(L => {
+          const offline = L.hardware_online === false;
+
+          if (offline) {
+            // Card đỏ khi ESP32 offline
+            return `
+              <div class="card-premium p-3 animate-slide-up border-rose-200" style="border-color: #FECACA;">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="font-mono text-xs font-bold text-slate-900">#${L.locker_id}</span>
+                  <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                </div>
+                <div class="text-[10px] font-bold text-rose-600 leading-tight">OFFLINE</div>
+                <div class="text-[9px] text-slate-400 mt-0.5">Bảo trì</div>
+              </div>
+            `;
+          }
+
           const s = STATUS_MAP[L.status] || STATUS_MAP['MAINTENANCE'];
           return `
             <div class="card-premium p-3 animate-slide-up">

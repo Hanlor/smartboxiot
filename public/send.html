@@ -323,9 +323,23 @@
         const data = await res.json();
         const el = document.getElementById('lockerPicker');
         el.innerHTML = data.lockers.map(L => {
+          const offline = L.hardware_online === false;
           const info = LOCKER_VI[L.status] || LOCKER_VI['MAINTENANCE'];
-          const available = L.status === 'AVAILABLE';
+          const available = L.status === 'AVAILABLE' && !offline;
           const isQR = targetLockerFromQR === L.locker_id;
+
+          if (offline) {
+            return `
+              <button type="button" disabled
+                      data-locker="${L.locker_id}"
+                      class="locker-btn relative rounded-xl border-2 p-3 text-center border-rose-200 bg-rose-50 cursor-not-allowed opacity-70">
+                <div class="text-[10px] font-bold text-rose-400 mb-1">TỦ #${L.locker_id}</div>
+                <div class="text-2xl font-extrabold text-rose-300 mb-1.5">${L.size}</div>
+                <div class="text-[9px] font-bold px-1.5 py-0.5 rounded border bg-rose-100 text-rose-700 border-rose-200 inline-block">OFFLINE</div>
+              </button>
+            `;
+          }
+
           return `
             <button type="button" onclick="pickLocker(${L.locker_id}, ${available})"
                     ${available ? '' : 'disabled'}
@@ -338,6 +352,18 @@
             </button>
           `;
         }).join('');
+
+        // Nếu TẤT CẢ tủ offline → hiện banner
+        if (data.lockers.every(L => L.hardware_online === false)) {
+          el.innerHTML = `
+            <div class="col-span-3 text-center py-6 px-3 bg-rose-50 border-2 border-rose-200 rounded-xl">
+              <i data-lucide="wifi-off" class="mx-auto text-rose-500 mb-2" style="width:28px;height:28px;"></i>
+              <div class="text-sm font-bold text-rose-700 mb-1">Hệ thống tủ tạm ngừng</div>
+              <div class="text-xs text-rose-600">Vui lòng quay lại sau ít phút</div>
+            </div>
+          `;
+          lucide.createIcons();
+        }
 
         if (targetLockerFromQR && !state.lockerId) {
           const targetBtn = document.querySelector(`.locker-btn[data-locker="${targetLockerFromQR}"]`);

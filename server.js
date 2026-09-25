@@ -251,8 +251,44 @@ function normalizePhoneVN(phone) {
   }
   return null;
 }
+// ═══════════════════════════════════════════════════════════
+// HARDWARE ONLINE CHECK
+// ═══════════════════════════════════════════════════════════
+// Trả về true nếu có BẤT KỲ ESP32 nào gửi heartbeat trong 60s qua
+function isHardwareOnline() {
+  const now = Date.now();
+  const timeout = 60 * 1000;  // khớp HEALTH_TIMEOUT_MS
+  for (const h of db.hardware.values()) {
+    if (now - h.last_seen < timeout) return true;
+  }
+  return false;
+}
 
+// Trả về thông tin chi tiết để frontend dùng
+function getHardwareStatus() {
+  const now = Date.now();
+  const timeout = 60 * 1000;
+  const devices = [];
+
+  for (const [id, h] of db.hardware.entries()) {
+    const age = now - h.last_seen;
+    devices.push({
+      device_id: id,
+      online: age < timeout,
+      age_s: Math.round(age / 1000),
+      warnings: h.warnings || [],
+    });
+  }
+
+  return {
+    online: devices.some(d => d.online),
+    device_count: devices.length,
+    devices,
+  };
+}
 function publicLockerView(locker) {
+  const hwOnline = isHardwareOnline();
+
   const view = {
     locker_id: locker.locker_id,
     size: locker.size,
@@ -260,6 +296,7 @@ function publicLockerView(locker) {
     door_closed: locker.door_closed,
     has_item: locker.has_item,
     led_color: locker.led_color,
+    hardware_online: hwOnline,     // <-- THÊM
   };
 
   if (locker.recipient_phone && locker.status !== LOCKER_STATUS.AVAILABLE) {
@@ -702,6 +739,8 @@ app.locals.helpers = {
   EXTENSION_HOURS,
   EXTENSION_MS,
   MAX_EXTENSIONS,
+  isHardwareOnline,
+  getHardwareStatus,
 };
 // ═══════════════════════════════════════════════════════════
 // QR CODE GENERATOR (server-side, không phụ thuộc client)
