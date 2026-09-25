@@ -717,120 +717,192 @@
     }
 
     async function refreshHardware() {
-      try {
-        const res = await fetch(`${API_BASE}/api/v1/admin/hardware-health`);
-        const data = await res.json();
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/admin/hardware-health`);
+    const data = await res.json();
 
-        document.getElementById('healthSummary').textContent =
-          `${data.online}/${data.total} online · ${data.warnings_total} cảnh báo`;
+    document.getElementById('healthSummary').textContent =
+      `${data.online}/${data.total} online · ${data.warnings_total} cảnh báo`;
 
-        const grid = document.getElementById('hardwareGrid');
+    const grid = document.getElementById('hardwareGrid');
 
-        if (!data.devices.length) {
-          grid.innerHTML = `
-            <div class="bg-slate-800/30 border border-slate-700 rounded-xl p-4 text-center text-xs text-slate-500 col-span-full">
-              Chưa có thiết bị nào gửi heartbeat
-            </div>
-          `;
-          return;
-        }
-
-        grid.innerHTML = data.devices.map(d => {
-          const sc = d.online ? scoreColor(d.health_score) : scoreColor(0);
-          const wifi = wifiLabel(d.wifi_rssi);
-
-          // Sensor grid: mỗi tủ 3 icons (door, item, servo)
-          const sensorRows = ['1', '2', '3'].map(n => {
-            const s = d.sensors[`locker_${n}`] || {};
-            return `
-              <div class="bg-slate-900/50 rounded-lg px-2 py-1.5 flex items-center justify-between">
-                <span class="text-[10px] text-slate-500 font-mono">#${n}</span>
-                <div class="flex gap-1 text-[13px] leading-none">
-                  ${sensorIcon(s.door)}${sensorIcon(s.item)}${sensorIcon(s.servo)}
-                </div>
-              </div>
-            `;
-          }).join('');
-
-          // Boot self-test summary
-          let selfTestHtml = '';
-          if (d.boot_self_test) {
-            const b = d.boot_self_test;
-            const stColor = b.failed === 0 ? 'text-emerald-400' : 'text-rose-400';
-            selfTestHtml = `
-              <div class="mt-2 pt-2 border-t border-slate-700/50">
-                <div class="flex items-center justify-between text-[10px]">
-                  <span class="text-slate-500">Boot self-test</span>
-                  <span class="font-bold ${stColor}">${b.passed}/${b.total} OK</span>
-                </div>
-              </div>
-            `;
-          }
-
-          // Warnings
-          let warnsHtml = '';
-          if (d.warnings.length > 0) {
-            warnsHtml = `
-              <div class="mt-2 pt-2 border-t border-slate-700/50 space-y-1">
-                ${d.warnings.map(w => `
-                  <div class="text-[10px] text-amber-400 flex items-center gap-1">
-                    <i data-lucide="alert-triangle" style="width:10px;height:10px;"></i>
-                    <span class="font-mono">${w}</span>
-                  </div>
-                `).join('')}
-              </div>
-            `;
-          }
-
-          return `
-            <div class="${sc.bg} border ${sc.border} rounded-xl p-4">
-              <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center gap-2">
-                  <span class="w-2.5 h-2.5 rounded-full ${sc.dot} ${d.online ? 'animate-breathe' : ''}"></span>
-                  <span class="font-mono font-bold text-white text-sm">${d.device_id}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="text-[10px] font-bold ${sc.text}">${sc.label}</span>
-                  <span class="text-[11px] font-extrabold ${sc.text} font-mono">${d.health_score}</span>
-                </div>
-              </div>
-
-              <div class="grid grid-cols-2 gap-2 text-[10px] mb-3">
-                <div class="bg-slate-900/50 rounded-lg px-2 py-1.5">
-                  <div class="text-slate-500 mb-0.5">WiFi RSSI</div>
-                  <div class="font-mono font-bold ${wifi.color}">${d.wifi_rssi} dBm · ${wifi.label}</div>
-                </div>
-                <div class="bg-slate-900/50 rounded-lg px-2 py-1.5">
-                  <div class="text-slate-500 mb-0.5">RAM trống</div>
-                  <div class="font-mono font-bold text-white">${d.free_ram_kb} KB</div>
-                </div>
-                <div class="bg-slate-900/50 rounded-lg px-2 py-1.5">
-                  <div class="text-slate-500 mb-0.5">Uptime</div>
-                  <div class="font-mono font-bold text-white">${Math.floor(d.uptime_s/3600)}h ${Math.floor((d.uptime_s%3600)/60)}m</div>
-                </div>
-                <div class="bg-slate-900/50 rounded-lg px-2 py-1.5">
-                  <div class="text-slate-500 mb-0.5">Heartbeat</div>
-                  <div class="font-mono font-bold text-white">${d.heartbeat_count}x · ${d.last_seen_ago_s}s</div>
-                </div>
-              </div>
-
-              <div class="grid grid-cols-3 gap-2 mb-1">
-                ${sensorRows}
-              </div>
-              <div class="text-[9px] text-slate-500 text-center mb-1">Cửa · Hàng · Servo</div>
-
-              ${selfTestHtml}
-              ${warnsHtml}
-            </div>
-          `;
-        }).join('');
-
-        lucide.createIcons();
-      } catch (e) {
-        console.error('[HW] Fetch error:', e);
-      }
+    if (!data.devices.length) {
+      grid.innerHTML = `
+        <div class="bg-slate-800/30 border border-slate-700 rounded-xl p-4 text-center text-xs text-slate-500 col-span-full">
+          Chưa có thiết bị nào gửi heartbeat
+        </div>
+      `;
+      return;
     }
 
+    grid.innerHTML = data.devices.map(d => renderDeviceCard(d)).join('');
+    lucide.createIcons();
+  } catch (e) {
+    console.error('[HW] Fetch error:', e);
+  }
+}
+
+function renderDeviceCard(d) {
+  const isOnline = d.state === 'ONLINE';
+  const isStale = d.state === 'STALE';
+  const isOffline = d.state === 'OFFLINE';
+
+  // Color scheme
+  let scheme;
+  if (isOnline) scheme = { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-400', dot: 'bg-emerald-400', label: 'ONLINE' };
+  else if (isStale) scheme = { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-400', dot: 'bg-amber-400', label: 'STALE' };
+  else scheme = { bg: 'bg-rose-500/10', border: 'border-rose-500/30', text: 'text-rose-400', dot: 'bg-rose-400', label: 'OFFLINE' };
+
+  // Header
+  let headerRight;
+  if (isOnline) {
+    headerRight = `
+      <span class="text-[10px] font-bold ${scheme.text}">ONLINE</span>
+      <span class="text-[11px] font-extrabold ${scheme.text} font-mono">${d.health_score}/100</span>
+    `;
+  } else {
+    headerRight = `
+      <span class="text-[10px] font-bold ${scheme.text}">${scheme.label}</span>
+      <span class="text-[10px] text-slate-400 font-mono">${d.last_seen_ago_display}</span>
+    `;
+  }
+
+  // Body — metrics
+  let metricsHtml;
+  if (isOnline) {
+    // Live data
+    metricsHtml = `
+      <div class="grid grid-cols-2 gap-2 text-[10px] mb-3">
+        <div class="bg-slate-900/50 rounded-lg px-2 py-1.5">
+          <div class="text-slate-500 mb-0.5">WiFi RSSI</div>
+          <div class="font-mono font-bold ${d.wifi_rssi >= -70 ? 'text-emerald-400' : d.wifi_rssi >= -80 ? 'text-amber-400' : 'text-rose-400'}">
+            ${d.wifi_rssi} dBm
+          </div>
+        </div>
+        <div class="bg-slate-900/50 rounded-lg px-2 py-1.5">
+          <div class="text-slate-500 mb-0.5">RAM trống</div>
+          <div class="font-mono font-bold text-white">${d.free_ram_kb} KB</div>
+        </div>
+        <div class="bg-slate-900/50 rounded-lg px-2 py-1.5">
+          <div class="text-slate-500 mb-0.5">Uptime</div>
+          <div class="font-mono font-bold text-white">
+            ${Math.floor(d.uptime_s/3600)}h ${Math.floor((d.uptime_s%3600)/60)}m
+          </div>
+        </div>
+        <div class="bg-slate-900/50 rounded-lg px-2 py-1.5">
+          <div class="text-slate-500 mb-0.5">Heartbeat</div>
+          <div class="font-mono font-bold text-white">${d.heartbeat_count}× · ${d.last_seen_ago_s}s</div>
+        </div>
+      </div>
+    `;
+  } else {
+    // Offline — hiện cảnh báo + data cache mờ
+    metricsHtml = `
+      <div class="bg-rose-500/10 border border-rose-500/30 rounded-lg p-3 mb-3">
+        <div class="flex items-start gap-2 mb-2">
+          <i data-lucide="wifi-off" class="text-rose-400 shrink-0 mt-0.5" style="width:14px;height:14px;"></i>
+          <div class="flex-1">
+            <div class="text-[11px] font-bold text-rose-300 mb-0.5">
+              Không nhận heartbeat từ ${d.last_seen_time}
+            </div>
+            <div class="text-[10px] text-rose-300/80 leading-relaxed">
+              Có thể: mất WiFi · mất điện · ESP32 treo
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 text-[10px] mb-3 opacity-50">
+        <div class="bg-slate-900/50 rounded-lg px-2 py-1.5">
+          <div class="text-slate-500 mb-0.5">WiFi (cache)</div>
+          <div class="font-mono font-bold text-slate-400">${d.wifi_rssi} dBm</div>
+        </div>
+        <div class="bg-slate-900/50 rounded-lg px-2 py-1.5">
+          <div class="text-slate-500 mb-0.5">RAM (cache)</div>
+          <div class="font-mono font-bold text-slate-400">${d.free_ram_kb} KB</div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Sensors
+  let sensorsHtml = '';
+  if (isOnline) {
+    const sensorRows = ['1', '2', '3'].map(n => {
+      const s = d.sensors[`locker_${n}`] || {};
+      return `
+        <div class="bg-slate-900/50 rounded-lg px-2 py-1.5 flex items-center justify-between">
+          <span class="text-[10px] text-slate-500 font-mono">Tủ #${n}</span>
+          <div class="flex gap-1 text-[13px] leading-none">
+            ${sensorIcon(s.door)}${sensorIcon(s.item)}${sensorIcon(s.servo)}
+          </div>
+        </div>
+      `;
+    }).join('');
+    sensorsHtml = `
+      <div class="grid grid-cols-3 gap-2 mb-1">${sensorRows}</div>
+      <div class="text-[9px] text-slate-500 text-center mb-2">Cửa · Hàng · Servo</div>
+    `;
+  } else {
+    sensorsHtml = `
+      <div class="bg-slate-900/30 rounded-lg p-3 text-center mb-2">
+        <div class="text-[10px] text-slate-500">Không có dữ liệu sensor mới</div>
+      </div>
+    `;
+  }
+
+  // Boot self-test
+  let selfTestHtml = '';
+  if (d.boot_self_test) {
+    const b = d.boot_self_test;
+    const ok = b.failed === 0;
+    selfTestHtml = `
+      <div class="pt-2 border-t border-slate-700/50 flex items-center justify-between">
+        <span class="text-[10px] text-slate-500 flex items-center gap-1">
+          <i data-lucide="${ok ? 'check-circle' : 'alert-circle'}" style="width:10px;height:10px;"></i>
+          Boot self-test
+        </span>
+        <span class="text-[10px] font-bold ${ok ? 'text-emerald-400' : 'text-rose-400'}">
+          ${b.passed}/${b.total} OK
+        </span>
+      </div>
+    `;
+  }
+
+  // Diagnosis
+  let diagnosisHtml = '';
+  if (d.diagnosis && d.diagnosis.length) {
+    const isOk = isOnline && d.diagnosis[0] === 'Không phát hiện vấn đề';
+    diagnosisHtml = `
+      <div class="mt-2 pt-2 border-t border-slate-700/50">
+        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wide mb-1">Chẩn đoán</div>
+        ${d.diagnosis.map(msg => `
+          <div class="text-[10px] ${isOk ? 'text-emerald-400' : 'text-amber-400'} flex items-start gap-1 mb-0.5">
+            <span class="shrink-0">${isOk ? '✅' : '⚠️'}</span>
+            <span class="font-mono">${msg}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="${scheme.bg} border ${scheme.border} rounded-xl p-4">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full ${scheme.dot} ${isOnline ? 'animate-breathe' : ''}"></span>
+          <span class="font-mono font-bold text-white text-sm">${d.device_id}</span>
+        </div>
+        <div class="flex items-center gap-2">${headerRight}</div>
+      </div>
+
+      ${metricsHtml}
+      ${sensorsHtml}
+      ${selfTestHtml}
+      ${diagnosisHtml}
+    </div>
+  `;
+}
         // Khởi động poll hardware + shipments khi vào dashboard
     let shipmentTimer = null;
 

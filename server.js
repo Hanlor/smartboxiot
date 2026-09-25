@@ -952,11 +952,58 @@ app.get('/api/v1/admin/hardware-health', (req, res) => {
   for (const [id, h] of db.hardware.entries()) {
     const age = now - h.last_seen;
     const online = age < HEALTH_TIMEOUT_MS;
+    const lastSeenDate = new Date(h.last_seen);
+
+    // Format last_seen
+    const hh = String(lastSeenDate.getHours()).padStart(2, '0');
+    const mm = String(lastSeenDate.getMinutes()).padStart(2, '0');
+    const lastSeenTime = `${hh}:${mm}`;
+
+    // State rõ ràng
+    let state = 'ONLINE';
+    if (age > HEALTH_TIMEOUT_MS * 3) state = 'OFFLINE';       // > 3 phút
+    else if (age > HEALTH_TIMEOUT_MS) state = 'STALE';        // 1-3 phút
+
+    // Chẩn đoán
+    const diagnosis = [];
+    if (!online) {
+      diagnosis.push(`Thiết bị không gửi heartbeat từ ${lastSeenTime}`);
+      diagnosis.push('Nguyên nhân có thể: mất WiFi · mất điện · ESP32 treo');
+    } else {
+      if (h.wifi_rssi < -80) diagnosis.push(`WiFi yếu (${h.wifi_rssi} dBm < -80)`);
+      else if (h.wifi_rssi < -70) diagnosis.push(`WiFi trung bình (${h.wifi_rssi} dBm)`);
+
+      if (h.free_ram < 20000) diagnosis.push(`RAM thấp (${Math.round(h.free_ram/1024)} KB < 20 KB)`);
+      else if (h.free_ram < 50000) diagnosis.push(`RAM trung bình (${Math.round(h.free_ram/1024)} KB)`);
+
+      if (h.warnings && h.warnings.length) {
+        h.warnings.forEach(w => diagnosis.push(`Sensor: ${w}`));
+      }
+
+      if (h.boot_self_test && h.boot_self_test.failed > 0) {
+        diagnosis.push(`Boot self-test: ${h.boot_self_test.failed} module lỗi`);
+      }
+
+      if (diagnosis.length === 0) {
+        diagnosis.push('Không phát hiện vấn đề');
+      }
+    }
+
+    // Age display
+    let ageDisplay;
+    if (age < 60000) ageDisplay = `${Math.round(age / 1000)}s trước`;
+    else if (age < 3600000) ageDisplay = `${Math.round(age / 60000)} phút trước`;
+    else ageDisplay = `${Math.round(age / 3600000)} giờ trước`;
 
     list.push({
       device_id: id,
       online,
+      state,                        // ONLINE | STALE | OFFLINE
       last_seen_ago_s: Math.round(age / 1000),
+      last_seen_time: lastSeenTime, // "14:35"
+      last_seen_ago_display: ageDisplay,
+      data_is_fresh: online,        // chỉ true khi vừa nhận heartbeat
+
       uptime_s: h.uptime_s,
       wifi_rssi: h.wifi_rssi,
       free_ram_kb: Math.round(h.free_ram / 1024),
@@ -966,6 +1013,7 @@ app.get('/api/v1/admin/hardware-health', (req, res) => {
       heartbeat_count: h.heartbeat_count,
       first_seen: h.first_seen,
       health_score: calcHealthScore(h, online),
+      diagnosis,                    // MỚI
     });
   }
 
