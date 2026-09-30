@@ -107,6 +107,7 @@ const db = {
 
 function createLocker(lockerId, size) {
   return {
+    // ═══ V1 — GIỮ NGUYÊN ═══
     locker_id: lockerId,
     size,
     status: LOCKER_STATUS.AVAILABLE,
@@ -120,6 +121,16 @@ function createLocker(lockerId, size) {
     recipient_phone: null,
     qr_token: null,
     reserved_at: null,
+
+    // ═══ V2 — THÊM MỚI ═══
+    slots: [
+      { slot_id: 1, size: 'S', status: 'AVAILABLE', shipment_id: null },
+      { slot_id: 2, size: 'M', status: 'AVAILABLE', shipment_id: null },
+      { slot_id: 3, size: 'L', status: 'AVAILABLE', shipment_id: null },
+    ],
+    occupied_slots: 0,
+    total_slots: 3,
+    available_slots: 3,
   };
 }
 
@@ -172,7 +183,83 @@ function applyStatus(locker, status) {
     locker.servo_angle = SERVO.LOCKED;
   }
 }
+// ═══════════════════════════════════════════════════════════
+// V2 SLOT HELPERS
+// ═══════════════════════════════════════════════════════════
 
+/**
+ * Tìm slot trống đầu tiên trong locker
+ * Ưu tiên slot có size khớp với shipment (nếu có)
+ */
+function findAvailableSlot(locker, preferredSize = null) {
+  if (!locker.slots || !Array.isArray(locker.slots)) return null;
+
+  if (preferredSize) {
+    const sized = locker.slots.find(s => s.status === 'AVAILABLE' && s.size === preferredSize);
+    if (sized) return sized;
+  }
+
+  return locker.slots.find(s => s.status === 'AVAILABLE') || null;
+}
+
+/**
+ * Đánh dấu slot đã có hàng
+ */
+function occupySlot(locker, slotId, shipmentId) {
+  if (!locker.slots) return false;
+  const slot = locker.slots.find(s => s.slot_id === slotId);
+  if (!slot) return false;
+
+  slot.status = 'OCCUPIED';
+  slot.shipment_id = shipmentId;
+  syncLockerSlotCounts(locker);
+  return true;
+}
+
+/**
+ * Giải phóng slot
+ */
+function releaseSlot(locker, slotId) {
+  if (!locker.slots) return false;
+  const slot = locker.slots.find(s => s.slot_id === slotId);
+  if (!slot) return false;
+
+  slot.status = 'AVAILABLE';
+  slot.shipment_id = null;
+  syncLockerSlotCounts(locker);
+  return true;
+}
+
+/**
+ * Đồng bộ số liệu tổng hợp từ slots
+ */
+function syncLockerSlotCounts(locker) {
+  if (!locker.slots) return;
+  const occupied = locker.slots.filter(s => s.status === 'OCCUPIED').length;
+  locker.occupied_slots = occupied;
+  locker.total_slots = locker.slots.length;
+  locker.available_slots = locker.slots.length - occupied;
+}
+
+/**
+ * Migration — thêm slots[] cho locker cũ (từ state.json version 1)
+ */
+function migrateLockerToV2(locker) {
+  if (!locker.slots) {
+    locker.slots = [
+      {
+        slot_id: 1,
+        size: 'S',
+        status: locker.status === 'OCCUPIED' ? 'OCCUPIED' : 'AVAILABLE',
+        shipment_id: locker.shipment_id || null,
+      },
+      { slot_id: 2, size: 'M', status: 'AVAILABLE', shipment_id: null },
+      { slot_id: 3, size: 'L', status: 'AVAILABLE', shipment_id: null },
+    ];
+  }
+  syncLockerSlotCounts(locker);
+  return locker;
+}
 function clearLockerShipment(locker) {
   locker.shipment_id = null;
   locker.sender_phone = null;
@@ -426,10 +513,17 @@ function loadStateFromFile() {
     const otps = mapFromEntries(parsed.otps);
     const otpSecurity = mapFromEntries(parsed.otpSecurity);
 
-    for (const spec of LOCKER_DEFAULTS) {
+        for (const spec of LOCKER_DEFAULTS) {
       const loaded = lockers.get(spec.locker_id) || lockers.get(String(spec.locker_id));
       const base = createLocker(spec.locker_id, spec.size);
-      db.lockers.set(spec.locker_id, loaded ? { ...base, ...loaded, locker_id: spec.locker_id, size: spec.size } : base);
+      const merged = loaded
+        ? { ...base, ...loaded, locker_id: spec.locker_id, size: spec.size }
+        : base;
+
+      // Migration: thêm slots[] cho locker cũ
+      migrateLockerToV2(merged);
+
+      db.lockers.set(spec.locker_id, merged);
     }
 
     db.shipments = shipments;
@@ -668,6 +762,12 @@ app.locals.constants = {
 app.locals.helpers = {
   applyStatus,
   clearLockerShipment,
+  // ═══ V2 MỚI ═══
+  findAvailableSlot,
+  occupySlot,
+  releaseSlot,
+  syncLockerSlotCounts,
+  // ... giữ các helper cũ
   generateLcdPreview,
   generateOtpCode,
   generateQrToken,
