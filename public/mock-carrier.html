@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartShip — Sàn vận chuyển (Demo)</title>
+  <link rel="stylesheet" href="/assets/premium.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        fontFamily: {
+          sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+          mono: ['JetBrains Mono', 'monospace']
+        }
+      }}
+    }
+  </script>
+</head>
+<body class="font-sans bg-slate-100 min-h-screen antialiased">
+
+  <header class="bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
+          <i data-lucide="truck" style="width:22px;height:22px;"></i>
+        </div>
+        <div>
+          <div class="font-extrabold text-base">SmartShip Express</div>
+          <div class="text-[10px] opacity-90">Sàn vận chuyển mô phỏng — Demo V2</div>
+        </div>
+      </div>
+      <span class="px-3 py-1 rounded-full bg-white/20 text-[10px] font-bold uppercase">DEMO</span>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto p-6">
+
+    <!-- Info -->
+    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+      <div class="flex gap-3">
+        <i data-lucide="info" class="text-blue-600 shrink-0" style="width:18px;height:18px;"></i>
+        <div class="text-xs text-blue-900 leading-relaxed">
+          <b>Hướng dẫn:</b> Đây là sàn vận chuyển giả lập. Danh sách đơn hàng bên dưới là dữ liệu mẫu để test shipper app. Copy mã đơn và dùng trong app shipper tại <code class="bg-blue-100 px-1.5 py-0.5 rounded font-mono">/shipper.html</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+        <div class="text-[10px] text-slate-500 uppercase tracking-wide font-bold">Tổng đơn</div>
+        <div class="text-2xl font-extrabold text-slate-900" id="statTotal">0</div>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+        <div class="text-[10px] text-slate-500 uppercase tracking-wide font-bold">Chờ giao</div>
+        <div class="text-2xl font-extrabold text-amber-600" id="statPending">0</div>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+        <div class="text-[10px] text-slate-500 uppercase tracking-wide font-bold">Đã giao</div>
+        <div class="text-2xl font-extrabold text-emerald-600" id="statDelivered">0</div>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+        <div class="text-[10px] text-slate-500 uppercase tracking-wide font-bold">Cư dân ĐK</div>
+        <div class="text-2xl font-extrabold text-blue-600" id="statResidents">0</div>
+      </div>
+    </div>
+
+    <!-- Orders -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+        <div>
+          <h2 class="font-bold text-slate-900">Danh sách đơn hàng</h2>
+          <p class="text-[11px] text-slate-500 mt-0.5">Copy mã đơn để dùng trong shipper app</p>
+        </div>
+        <button onclick="loadOrders()" class="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1">
+          <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>
+          Làm mới
+        </button>
+      </div>
+      <div id="orderList" class="divide-y divide-slate-100">
+        <div class="p-6 text-center text-sm text-slate-400">Đang tải...</div>
+      </div>
+    </div>
+
+    <!-- Residents -->
+    <div class="mt-6 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-200">
+        <h2 class="font-bold text-slate-900">Cư dân đã đăng ký</h2>
+        <p class="text-[11px] text-slate-500 mt-0.5">Những SĐT có thể nhận hàng</p>
+      </div>
+      <div id="residentList" class="divide-y divide-slate-100">
+        <div class="p-6 text-center text-sm text-slate-400">Đang tải...</div>
+      </div>
+    </div>
+
+    <!-- Shippers -->
+    <div class="mt-6 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-200">
+        <h2 class="font-bold text-slate-900">Shipper đã đăng ký</h2>
+        <p class="text-[11px] text-slate-500 mt-0.5">Mã shipper để login vào shipper app</p>
+      </div>
+      <div id="shipperList" class="divide-y divide-slate-100">
+        <div class="p-6 text-center text-sm text-slate-400">Đang tải...</div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    const API_BASE = window.location.origin;
+
+    const CARRIER_COLORS = {
+      'SHOPEE': { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200', icon: '🛍️' },
+      'LAZADA': { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200', icon: '📦' },
+      'GHN': { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-200', icon: '🚚' },
+    };
+
+    async function loadOrders() {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/admin/mock-orders`);
+        const data = await res.json();
+
+        if (!data.success) throw new Error('Load failed');
+
+        const orders = data.orders;
+        document.getElementById('statTotal').textContent = orders.length;
+        document.getElementById('statPending').textContent = orders.filter(o => o.status === 'PENDING').length;
+        document.getElementById('statDelivered').textContent = orders.filter(o => o.status === 'DELIVERED').length;
+
+        document.getElementById('orderList').innerHTML = orders.map(o => {
+          const cc = CARRIER_COLORS[o.carrier] || { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', icon: '📮' };
+          const isDelivered = o.status === 'DELIVERED';
+          const canRegister = !o.recipient_registered;
+
+          return `
+            <div class="p-4 flex items-center justify-between hover:bg-slate-50 transition">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="font-mono font-bold text-slate-900 text-sm">${o.order_code}</span>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${cc.bg} ${cc.text} border ${cc.border}">
+                    ${cc.icon} ${o.carrier}
+                  </span>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    isDelivered ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                  }">
+                    ${isDelivered ? '✓ Đã giao' : '⏳ Chờ giao'}
+                  </span>
+                </div>
+                <div class="text-[11px] text-slate-500">
+                  Giao cho <span class="font-mono font-bold">${o.recipient_phone}</span>
+                  ${o.apartment ? `· Căn hộ <b>${o.apartment}</b>` : ''}
+                  · Size <b>${o.size}</b>
+                </div>
+                ${canRegister ? `
+                  <div class="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
+                    <i data-lucide="alert-triangle" style="width:10px;height:10px;"></i>
+                    Cư dân chưa đăng ký
+                  </div>
+                ` : ''}
+              </div>
+              <button onclick="copyOrder('${o.order_code}')" 
+                      class="ml-3 px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-700 text-white text-xs font-bold whitespace-nowrap transition">
+                📋 Copy
+              </button>
+            </div>
+          `;
+        }).join('');
+
+        lucide.createIcons();
+      } catch (e) {
+        document.getElementById('orderList').innerHTML =
+          '<div class="p-6 text-center text-sm text-rose-500">Không tải được đơn hàng</div>';
+      }
+    }
+
+    async function loadResidents() {
+      try {
+        // Gọi API mới — cần thêm ở backend
+        const res = await fetch(`${API_BASE}/api/v1/admin/residents`);
+        if (res.status === 404) {
+          document.getElementById('residentList').innerHTML =
+            '<div class="p-6 text-center text-sm text-slate-400">API chưa có — cần thêm</div>';
+          return;
+        }
+        const data = await res.json();
+        document.getElementById('statResidents').textContent = data.total || 0;
+
+        if (!data.residents || !data.residents.length) {
+          document.getElementById('residentList').innerHTML =
+            '<div class="p-6 text-center text-sm text-slate-400">Chưa có cư dân nào đăng ký</div>';
+          return;
+        }
+
+        document.getElementById('residentList').innerHTML = data.residents.map(r => `
+          <div class="p-3 flex items-center justify-between hover:bg-slate-50">
+            <div>
+              <div class="font-mono font-bold text-slate-900 text-sm">${r.phone_masked}</div>
+              <div class="text-[11px] text-slate-500">${r.name} · ${r.apartment}</div>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-1 rounded-full ${
+              r.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+            }">${r.status}</span>
+          </div>
+        `).join('');
+      } catch (e) {
+        document.getElementById('residentList').innerHTML =
+          '<div class="p-6 text-center text-sm text-rose-500">Lỗi tải cư dân</div>';
+      }
+    }
+
+    async function loadShippers() {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/admin/shippers`);
+        const data = await res.json();
+
+        if (!data.shippers || !data.shippers.length) {
+          document.getElementById('shipperList').innerHTML =
+            '<div class="p-6 text-center text-sm text-slate-400">Chưa có shipper nào đăng ký</div>';
+          return;
+        }
+
+        document.getElementById('shipperList').innerHTML = data.shippers.map(s => {
+          const cc = CARRIER_COLORS[s.carrier] || { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', icon: '📮' };
+          return `
+            <div class="p-3 flex items-center justify-between hover:bg-slate-50">
+              <div>
+                <div class="font-mono font-bold text-slate-900 text-sm">${s.code}</div>
+                <div class="text-[11px] text-slate-500">
+                  <span class="font-bold ${cc.text}">${cc.icon} ${s.carrier}</span>
+                  · ${s.name} · ${s.phone_masked}
+                </div>
+              </div>
+              <span class="text-[10px] font-bold px-2 py-1 rounded-full ${
+                s.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' :
+                s.status === 'TERMINATED' ? 'bg-rose-100 text-rose-700' :
+                'bg-amber-100 text-amber-700'
+              }">${s.status}</span>
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        document.getElementById('shipperList').innerHTML =
+          '<div class="p-6 text-center text-sm text-rose-500">Lỗi tải shipper</div>';
+      }
+    }
+
+    function copyOrder(code) {
+      navigator.clipboard.writeText(code).then(() => {
+        if (window.showToast) showToast(`Đã copy: ${code}`, 'success');
+      });
+    }
+
+    lucide.createIcons();
+    loadOrders();
+    loadResidents();
+    loadShippers();
+    setInterval(loadOrders, 5000);
+  </script>
+
+  <script src="/assets/toast.js"></script>
+</body>
+</html>

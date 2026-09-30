@@ -1075,6 +1075,31 @@ app.post('/api/v1/admin/reset-test-data', (req, res) => {
   });
 });
 /**
+ * GET /api/v1/admin/residents
+ * Admin xem danh sách cư dân đã đăng ký
+ */
+app.get('/api/v1/admin/residents', (req, res) => {
+  const list = [...db.residents.values()].map(r => ({
+    phone: r.phone,
+    phone_masked: maskPhone(r.phone),
+    name: r.name,
+    apartment: r.apartment,
+    email: r.email,
+    status: r.status,
+    registered_at: r.registered_at,
+    packages_received: r.packages_received || 0,
+    packages_pending: r.packages_pending || 0,
+  }));
+
+  list.sort((a, b) => b.registered_at - a.registered_at);
+
+  return res.json({
+    success: true,
+    residents: list,
+    total: list.length,
+  });
+});
+/**
  * GET /api/v1/admin/shippers
  * Admin xem danh sách shipper
  */
