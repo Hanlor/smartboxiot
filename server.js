@@ -1099,6 +1099,315 @@ app.get('/api/v1/admin/shippers', (req, res) => {
   });
 });
 // ═══════════════════════════════════════════════════════════
+// V2 — MOCK CARRIER ORDERS (giả lập đơn từ sàn)
+// ═══════════════════════════════════════════════════════════
+const MOCK_CARRIER_ORDERS = {
+  'SPXVN001': { carrier: 'SHOPEE', recipient_phone: '+84912345678', apartment: 'A-501', size: 'S' },
+  'SPXVN002': { carrier: 'SHOPEE', recipient_phone: '+84769259051', apartment: 'A-502', size: 'M' },
+  'LZDVN001': { carrier: 'LAZADA', recipient_phone: '+84912345678', apartment: 'A-501', size: 'M' },
+  'GHNVN001': { carrier: 'GHN',    recipient_phone: '+84987654321', apartment: 'B-201', size: 'L' },
+  'GHNVN002': { carrier: 'GHN',    recipient_phone: '+84987654321', apartment: 'B-201', size: 'S' },
+};
+
+// Trạng thái đơn
+const MOCK_ORDER_STATE = new Map(); // order_code -> { status, delivered_at, slot_id, shipper_code, locker_id }
+
+// ═══════════════════════════════════════════════════════════
+// V2 — SHIPPER VERIFY (xác minh đơn hàng với sàn)
+// ═══════════════════════════════════════════════════════════
+app.post('/api/v1/shipper/verify', (req, res) => {
+  try {
+    const { shipper_code, order_code, locker_id } = req.body || {};
+
+    if (!shipper_code || !order_code) {
+      return res.status(400).json({
+        success: false,
+        message: 'Thiếu shipper_code hoặc order_code',
+      });
+    }
+
+    // 1. Check shipper tồn tại + ACTIVE
+    const shipper = db.shippers.get(String(shipper_code).trim().toUpperCase());
+    if (!shipper) {
+      return res.status(404).json({ success: false, message: 'Mã shipper không tồn tại' });
+    }
+    if (shipper.status !== 'ACTIVE') {
+      return res.status(403).json({
+        success: false,
+        message: `Shipper không hoạt động (${shipper.status})`,
+      });
+    }
+
+    // 2. Check đơn tồn tại
+    const orderCode = String(order_code).trim().toUpperCase();
+    const order = MOCK_CARRIER_ORDERS[orderCode];
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Đơn hàng không tồn tại trong hệ thống sàn',
+      });
+    }
+
+    // 3. Check đơn thuộc sàn của shipper
+    if (order.carrier !== shipper.carrier) {
+      return res.status(403).json({
+        success: false,
+        message: `Đơn hàng thuộc ${order.carrier}, không phải ${shipper.carrier}`,
+      });
+    }
+
+    // 4. Check đơn chưa giao
+    const orderState = MOCK_ORDER_STATE.get(orderCode);
+    if (orderState && orderState.status === 'DELIVERED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Đơn hàng đã được giao',
+        delivered_at: orderState.delivered_at,
+      });
+    }
+
+    // 5. Check người nhận đã đăng ký chưa
+    const resident = db.residents.get(order.recipient_phone);
+    if (!resident) {
+      return res.status(400).json({
+        success: false,
+        message: 'Người nhận chưa đăng ký dịch vụ. Vui lòng yêu cầu cư dân đăng ký trước.',
+        recipient_phone_masked: maskPhone(order.recipient_phone),
+      });
+    }
+    if (resident.status !== 'ACTIVE') {
+      return res.status(403).json({
+        success: false,
+        message: `Tài khoản cư dân không hoạt động (${resident.status})`,
+      });
+    }
+
+    // 6. Check locker nếu có
+    let locker = null;
+    if (locker_id) {
+      const lid = Number(locker_id);
+      locker = db.lockers.get(lid);
+      if (!locker) {
+        return res.status(404).json({ success: false, message: 'Không tìm thấy tủ' });
+      }
+      // Check còn slot trống
+      const slot = findAvailableSlot(locker);
+      if (!slot) {
+        return res.status(503).json({
+          success: false,
+          message: 'Tủ đã đầy. Vui lòng chọn tủ khác.',
+          available_slots: 0,
+        });
+      }
+    }
+
+    console.log(`✅ [VERIFY] ${shipper_code} verify đơn ${orderCode} cho ${resident.apartment}`);
+
+    return res.json({
+      success: true,
+      message: 'Xác minh đơn hàng thành công',
+      order: {
+        order_code: orderCode,
+        carrier: order.carrier,
+        size: order.size,
+        recipient_apartment: resident.apartment,
+        recipient_name: resident.name,
+      },
+      shipper: {
+        code: shipper.code,
+        name: shipper.name,
+        carrier: shipper.carrier,
+      },
+      available_slot: locker ? findAvailableSlot(locker) : null,
+    });
+  } catch (err) {
+    console.error('[SHIPPER VERIFY] Error:', err.message);
+    return res.status(500).json({ success: false, message: 'Internal error' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// V2 — SHIPPER DEPOSIT (bỏ hàng vào slot + ghi log)
+// ═══════════════════════════════════════════════════════════
+app.post('/api/v1/shipper/deposit', (req, res) => {
+  try {
+    const { shipper_code, order_code, locker_id, compartment_id } = req.body || {};
+
+    if (!shipper_code || !order_code || !locker_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Thiếu shipper_code, order_code hoặc locker_id',
+      });
+    }
+
+    // Re-verify
+    const shipper = db.shippers.get(String(shipper_code).trim().toUpperCase());
+    if (!shipper || shipper.status !== 'ACTIVE') {
+      return res.status(403).json({ success: false, message: 'Shipper không hợp lệ' });
+    }
+
+    const orderCode = String(order_code).trim().toUpperCase();
+    const order = MOCK_CARRIER_ORDERS[orderCode];
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Đơn hàng không tồn tại' });
+    }
+
+    if (order.carrier !== shipper.carrier) {
+      return res.status(403).json({ success: false, message: 'Đơn không thuộc sàn của shipper' });
+    }
+
+    const resident = db.residents.get(order.recipient_phone);
+    if (!resident) {
+      return res.status(400).json({ success: false, message: 'Người nhận chưa đăng ký' });
+    }
+
+    // Check đã giao chưa
+    const existing = MOCK_ORDER_STATE.get(orderCode);
+    if (existing && existing.status === 'DELIVERED') {
+      return res.status(400).json({ success: false, message: 'Đơn đã được giao rồi' });
+    }
+
+    // Get locker
+    const locker = db.lockers.get(Number(locker_id));
+    if (!locker) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tủ' });
+    }
+
+    // Tìm slot trống — ưu tiên size khớp
+    const slot = findAvailableSlot(locker, order.size);
+    if (!slot) {
+      return res.status(503).json({ success: false, message: 'Tủ đã đầy' });
+    }
+
+    const now = Date.now();
+    const logId = `LOG-${now}-${Math.random().toString(36).substr(2, 6)}`;
+
+    // Đánh dấu slot
+    occupySlot(locker, slot.slot_id, orderCode);
+
+    // Đánh dấu order state
+    MOCK_ORDER_STATE.set(orderCode, {
+      status: 'DELIVERED',
+      delivered_at: now,
+      slot_id: slot.slot_id,
+      locker_id: locker.locker_id,
+      shipper_code: shipper.code,
+      log_id: logId,
+    });
+
+    // Tạo delivery log — BẰNG CHỨNG PHÁP LÝ
+    const logEntry = {
+      log_id: logId,
+      order_code: orderCode,
+      carrier: order.carrier,
+      shipper_code: shipper.code,
+      shipper_name: shipper.name,
+      locker_id: locker.locker_id,
+      slot_id: slot.slot_id,
+      size: order.size,
+      recipient_phone: order.recipient_phone,
+      recipient_apartment: resident.apartment,
+      resident_name: resident.name,
+      delivered_at: now,
+      photo_url: null,             // Sẽ có khi có camera
+      verified_chain: true,        // Đã qua 4 bước check
+    };
+
+    if (!db.deliveryLogs) db.deliveryLogs = [];
+    db.deliveryLogs.push(logEntry);
+    // Chỉ giữ 1000 log gần nhất
+    if (db.deliveryLogs.length > 1000) {
+      db.deliveryLogs = db.deliveryLogs.slice(-1000);
+    }
+
+    // Update stats
+    shipper.total_deliveries += 1;
+    resident.packages_received = (resident.packages_received || 0) + 1;
+    resident.packages_pending = (resident.packages_pending || 0) + 1;
+
+    persistState();
+
+    console.log(`📦 [DEPOSIT] ${shipper.code} → Tủ #${locker.locker_id} slot ${slot.slot_id} (${orderCode}) cho ${resident.apartment}`);
+
+    return res.json({
+      success: true,
+      message: 'Ghi nhận giao hàng thành công',
+      log: {
+        log_id: logId,
+        order_code: orderCode,
+        locker_id: locker.locker_id,
+        slot_id: slot.slot_id,
+        delivered_at: now,
+      },
+      resident_notified: true,
+    });
+  } catch (err) {
+    console.error('[SHIPPER DEPOSIT] Error:', err.message);
+    return res.status(500).json({ success: false, message: 'Internal error' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// V2 — DELIVERY LOGS (bằng chứng tranh chấp)
+// ═══════════════════════════════════════════════════════════
+app.get('/api/v1/admin/delivery-logs', (req, res) => {
+  const { shipper_code, carrier, order_code, from_date, to_date, limit } = req.query;
+
+  let logs = [...(db.deliveryLogs || [])];
+
+  if (shipper_code) logs = logs.filter(l => l.shipper_code === String(shipper_code).toUpperCase());
+  if (carrier) logs = logs.filter(l => l.carrier === String(carrier).toUpperCase());
+  if (order_code) logs = logs.filter(l => l.order_code === String(order_code).toUpperCase());
+  if (from_date) {
+    const from = new Date(from_date).getTime();
+    logs = logs.filter(l => l.delivered_at >= from);
+  }
+  if (to_date) {
+    const to = new Date(to_date).getTime();
+    logs = logs.filter(l => l.delivered_at <= to);
+  }
+
+  // Sort mới nhất trước
+  logs.sort((a, b) => b.delivered_at - a.delivered_at);
+
+  const lim = Math.min(Math.max(Number(limit) || 100, 1), 500);
+  const sliced = logs.slice(0, lim);
+
+  return res.json({
+    success: true,
+    logs: sliced,
+    total: logs.length,
+    showing: sliced.length,
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+// V2 — ORDER STATE (tra cứu đơn hàng mock)
+// ═══════════════════════════════════════════════════════════
+app.get('/api/v1/admin/mock-orders', (req, res) => {
+  const orders = Object.entries(MOCK_CARRIER_ORDERS).map(([code, info]) => {
+    const state = MOCK_ORDER_STATE.get(code);
+    const resident = db.residents.get(info.recipient_phone);
+    return {
+      order_code: code,
+      carrier: info.carrier,
+      recipient_phone: maskPhone(info.recipient_phone),
+      recipient_registered: !!resident,
+      apartment: resident ? resident.apartment : null,
+      size: info.size,
+      status: state ? state.status : 'PENDING',
+      delivered_at: state ? state.delivered_at : null,
+      slot_id: state ? state.slot_id : null,
+    };
+  });
+
+  return res.json({
+    success: true,
+    orders,
+    total: orders.length,
+  });
+});
+// ═══════════════════════════════════════════════════════════
 // V2 — RESIDENT REGISTRATION
 // ═══════════════════════════════════════════════════════════
 
