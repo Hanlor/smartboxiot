@@ -1035,7 +1035,45 @@ app.get('/api/v1/shipper/me', (req, res) => {
     },
   });
 });
+/**
+ * POST /api/v1/admin/reset-test-data
+ * Xóa toàn bộ shippers + residents để test lại từ đầu
+ */
+app.post('/api/v1/admin/reset-test-data', (req, res) => {
+  const { adminKey, confirm } = req.body || {};
+  const ADMIN_SECRET = process.env.ADMIN_SECRET_KEY || 'admin@smartbox123';
 
+  if (adminKey !== ADMIN_SECRET) {
+    return res.status(403).json({ success: false, message: 'Sai mật khẩu' });
+  }
+
+  if (confirm !== 'RESET') {
+    return res.status(400).json({
+      success: false,
+      message: 'Cần gửi confirm: "RESET" để xác nhận',
+    });
+  }
+
+  const before = {
+    shippers: db.shippers.size,
+    residents: db.residents.size,
+    delivery_logs: db.deliveryLogs?.length || 0,
+  };
+
+  db.shippers.clear();
+  db.residents.clear();
+  if (db.deliveryLogs) db.deliveryLogs = [];
+
+  persistState();
+
+  console.log('🧹 [ADMIN] Reset test data:', before);
+
+  return res.json({
+    success: true,
+    message: 'Đã xóa toàn bộ shipper + resident',
+    deleted: before,
+  });
+});
 /**
  * GET /api/v1/admin/shippers
  * Admin xem danh sách shipper
