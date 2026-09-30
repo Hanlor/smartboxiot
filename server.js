@@ -803,6 +803,264 @@ app.locals.helpers = {
   getHardwareStatus,
 };
 // ═══════════════════════════════════════════════════════════
+// V2 — SHIPPER REGISTRATION + LOGIN
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * POST /api/v1/shipper/register
+ * Sàn đăng ký shipper (thường do admin sàn gọi)
+ */
+app.post('/api/v1/shipper/register', (req, res) => {
+  try {
+    const { shipper_code, phone, name, carrier, carrier_contract_id } = req.body || {};
+
+    if (!shipper_code || !phone || !carrier || !name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Thiếu shipper_code, phone, name hoặc carrier',
+      });
+    }
+
+    const normalized = normalizePhoneVN(phone);
+    if (!normalized) {
+      return res.status(400).json({ success: false, message: 'SĐT không hợp lệ' });
+    }
+
+    const code = String(shipper_code).trim().toUpperCase();
+
+    // Check trùng mã
+    if (db.shippers.has(code)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mã shipper đã tồn tại',
+      });
+    }
+
+    // Check SĐT đã dùng bởi shipper khác chưa
+    for (const s of db.shippers.values()) {
+      if (s.phone === normalized) {
+        return res.status(400).json({
+          success: false,
+          message: 'SĐT đã đăng ký cho shipper khác',
+          existing_code: s.code,
+        });
+      }
+    }
+
+    const shipper = {
+      code,
+      phone: normalized,
+      name: String(name).trim(),
+      carrier: String(carrier).trim().toUpperCase(),
+      carrier_contract_id: carrier_contract_id || null,
+      status: 'ACTIVE',                   // ACTIVE | SUSPENDED | TERMINATED
+      registered_at: Date.now(),
+      last_login: null,
+      total_deliveries: 0,
+      total_disputes: 0,
+      incidents: [],
+    };
+
+    db.shippers.set(code, shipper);
+    persistState();
+
+    console.log(`✅ [SHIPPER] Đăng ký: ${code} (${shipper.carrier}) - ${shipper.name}`);
+
+    return res.json({
+      success: true,
+      message: 'Đăng ký shipper thành công',
+      shipper: {
+        code: shipper.code,
+        name: shipper.name,
+        carrier: shipper.carrier,
+        status: shipper.status,
+      },
+    });
+  } catch (err) {
+    console.error('[SHIPPER REGISTER] Error:', err.message);
+    return res.status(500).json({ success: false, message: 'Internal error' });
+  }
+});
+
+/**
+ * POST /api/v1/shipper/login
+ * Shipper login bằng mã + SĐT
+ */
+app.post('/api/v1/shipper/login', (req, res) => {
+  try {
+    const { shipper_code, phone } = req.body || {};
+
+    if (!shipper_code || !phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Thiếu shipper_code hoặc phone',
+      });
+    }
+
+    const code = String(shipper_code).trim().toUpperCase();
+    const shipper = db.shippers.get(code);
+
+    if (!shipper) {
+      return res.status(404).json({
+        success: false,
+        message: 'Mã shipper không tồn tại',
+      });
+    }
+
+    // ⚠️ RỦI RO CAO — check status trước
+    if (shipper.status === 'TERMINATED') {
+      console.warn(`🚫 [SHIPPER] Login bị chặn: ${code} đã nghỉ việc`);
+      return res.status(403).json({
+        success: false,
+        message: 'Tài khoản shipper đã bị chấm dứt',
+        status: shipper.status,
+      });
+    }
+
+    if (shipper.status === 'SUSPENDED') {
+      return res.status(403).json({
+        success: false,
+        message: 'Tài khoản shipper đang bị tạm khóa',
+        status: shipper.status,
+      });
+    }
+
+    // ⚠️ RỦI RO CAO — check SĐT khớp
+    const normalized = normalizePhoneVN(phone);
+    if (!normalized || normalized !== shipper.phone) {
+      console.warn(`🚫 [SHIPPER] Login bị chặn: sai SĐT cho ${code}`);
+      return res.status(403).json({
+        success: false,
+        message: 'SĐT không khớp với mã shipper',
+      });
+    }
+
+    shipper.last_login = Date.now();
+    persistState();
+
+    console.log(`✅ [SHIPPER] Login: ${code} (${shipper.carrier})`);
+
+    return res.json({
+      success: true,
+      message: 'Đăng nhập thành công',
+      shipper: {
+        code: shipper.code,
+        name: shipper.name,
+        carrier: shipper.carrier,
+        status: shipper.status,
+        total_deliveries: shipper.total_deliveries,
+      },
+    });
+  } catch (err) {
+    console.error('[SHIPPER LOGIN] Error:', err.message);
+    return res.status(500).json({ success: false, message: 'Internal error' });
+  }
+});
+
+/**
+ * POST /api/v1/carrier/notify-termination
+ * Sàn thông báo shipper nghỉ việc
+ */
+app.post('/api/v1/carrier/notify-termination', (req, res) => {
+  try {
+    const { carrier, shipper_code, reason, terminated_at } = req.body || {};
+
+    if (!carrier || !shipper_code) {
+      return res.status(400).json({
+        success: false,
+        message: 'Thiếu carrier hoặc shipper_code',
+      });
+    }
+
+    const code = String(shipper_code).trim().toUpperCase();
+    const shipper = db.shippers.get(code);
+
+    if (!shipper) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy shipper',
+      });
+    }
+
+    if (shipper.carrier !== String(carrier).trim().toUpperCase()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Sai sàn — không có quyền đánh dấu shipper này',
+      });
+    }
+
+    shipper.status = 'TERMINATED';
+    shipper.terminated_at = terminated_at || Date.now();
+    shipper.termination_reason = reason || 'Không rõ';
+    persistState();
+
+    console.warn(`🚫 [SHIPPER] Đánh dấu nghỉ việc: ${code} (${carrier})`);
+
+    return res.json({
+      success: true,
+      message: 'Đã đánh dấu shipper nghỉ việc. Log giao hàng vẫn được giữ để tra cứu.',
+      shipper: {
+        code: shipper.code,
+        status: shipper.status,
+        terminated_at: shipper.terminated_at,
+      },
+    });
+  } catch (err) {
+    console.error('[CARRIER NOTIFY] Error:', err.message);
+    return res.status(500).json({ success: false, message: 'Internal error' });
+  }
+});
+
+/**
+ * GET /api/v1/shipper/me?code=GHN-456
+ * Lấy thông tin shipper (không cần auth, dùng cho demo)
+ */
+app.get('/api/v1/shipper/me', (req, res) => {
+  const { code } = req.query;
+  if (!code) return res.status(400).json({ success: false, message: 'Thiếu code' });
+
+  const shipper = db.shippers.get(String(code).trim().toUpperCase());
+  if (!shipper) return res.status(404).json({ success: false, message: 'Không tìm thấy' });
+
+  return res.json({
+    success: true,
+    shipper: {
+      code: shipper.code,
+      name: shipper.name,
+      carrier: shipper.carrier,
+      status: shipper.status,
+      total_deliveries: shipper.total_deliveries,
+      registered_at: shipper.registered_at,
+      last_login: shipper.last_login,
+    },
+  });
+});
+
+/**
+ * GET /api/v1/admin/shippers
+ * Admin xem danh sách shipper
+ */
+app.get('/api/v1/admin/shippers', (req, res) => {
+  const list = [...db.shippers.values()].map(s => ({
+    code: s.code,
+    name: s.name,
+    carrier: s.carrier,
+    phone_masked: maskPhone(s.phone),
+    status: s.status,
+    total_deliveries: s.total_deliveries,
+    registered_at: s.registered_at,
+    last_login: s.last_login,
+  }));
+
+  list.sort((a, b) => b.registered_at - a.registered_at);
+
+  return res.json({
+    success: true,
+    shippers: list,
+    total: list.length,
+  });
+});
+// ═══════════════════════════════════════════════════════════
 // V2 — RESIDENT REGISTRATION
 // ═══════════════════════════════════════════════════════════
 
