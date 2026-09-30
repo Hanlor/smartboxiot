@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SmartShip — Sàn vận chuyển (Demo)</title>
+  <title>SmartShip Express — Sàn Demo</title>
   <link rel="stylesheet" href="/assets/premium.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -13,97 +13,192 @@
         fontFamily: {
           sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
           mono: ['JetBrains Mono', 'monospace']
+        },
+        colors: {
+          brand: { 50:'#EEF2FF', 100:'#E0E7FF', 500:'#6366F1', 600:'#4F46E5', 700:'#4338CA' }
         }
       }}
     }
   </script>
+  <style>
+    body { background: #F8FAFC; }
+    .glass-card {
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(226,232,240,0.8);
+    }
+    .stat-card {
+      background: white;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 20px -8px rgba(15, 23, 42, 0.15);
+    }
+    .order-row {
+      transition: background-color 0.15s ease;
+    }
+    .order-row:hover {
+      background: #F8FAFC;
+    }
+    .badge-carrier {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      padding: 3px 9px;
+      border-radius: 999px;
+    }
+    .copy-btn {
+      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .copy-btn:active {
+      transform: scale(0.96);
+    }
+  </style>
 </head>
-<body class="font-sans bg-slate-100 min-h-screen antialiased">
+<body class="font-sans min-h-screen antialiased text-slate-900">
 
-  <header class="bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg sticky top-0 z-50">
-    <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+  <!-- ═══ HEADER ═══ -->
+  <header class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
-          <i data-lucide="truck" style="width:22px;height:22px;"></i>
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center shadow-lg shadow-orange-500/30">
+          <i data-lucide="truck" class="text-white" style="width:20px;height:20px;"></i>
         </div>
         <div>
-          <div class="font-extrabold text-base">SmartShip Express</div>
-          <div class="text-[10px] opacity-90">Sàn vận chuyển mô phỏng — Demo V2</div>
+          <div class="font-extrabold text-base tracking-tight text-slate-900">SmartShip Express</div>
+          <div class="text-[10px] text-slate-500">Sàn vận chuyển mô phỏng</div>
         </div>
       </div>
-      <span class="px-3 py-1 rounded-full bg-white/20 text-[10px] font-bold uppercase">DEMO</span>
+
+      <div class="flex items-center gap-3">
+        <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-breathe"></span>
+          <span class="text-[11px] font-semibold text-emerald-700">Online</span>
+        </div>
+        <span class="px-3 py-1.5 rounded-full bg-orange-500 text-white text-[10px] font-extrabold uppercase tracking-wider">
+          DEMO
+        </span>
+      </div>
     </div>
   </header>
 
-  <main class="max-w-4xl mx-auto p-6">
+  <main class="max-w-6xl mx-auto px-6 py-8">
 
-    <!-- Info -->
-    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-      <div class="flex gap-3">
-        <i data-lucide="info" class="text-blue-600 shrink-0" style="width:18px;height:18px;"></i>
-        <div class="text-xs text-blue-900 leading-relaxed">
-          <b>Hướng dẫn:</b> Đây là sàn vận chuyển giả lập. Danh sách đơn hàng bên dưới là dữ liệu mẫu để test shipper app. Copy mã đơn và dùng trong app shipper tại <code class="bg-blue-100 px-1.5 py-0.5 rounded font-mono">/shipper.html</code>
+    <!-- ═══ HERO ═══ -->
+    <div class="mb-8">
+      <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
+        Dashboard vận chuyển
+      </h1>
+      <p class="text-sm text-slate-500">
+        Quản lý đơn hàng mô phỏng — Test shipper app tại
+        <code class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono text-xs">/shipper.html</code>
+      </p>
+    </div>
+
+    <!-- ═══ STATS ═══ -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div class="stat-card rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tổng đơn</span>
+          <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+            <i data-lucide="package" class="text-slate-500" style="width:16px;height:16px;"></i>
+          </div>
+        </div>
+        <div class="text-3xl font-extrabold text-slate-900 tracking-tight" id="statTotal">0</div>
+      </div>
+
+      <div class="stat-card rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Chờ giao</span>
+          <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+            <i data-lucide="clock" class="text-amber-600" style="width:16px;height:16px;"></i>
+          </div>
+        </div>
+        <div class="text-3xl font-extrabold text-amber-600 tracking-tight" id="statPending">0</div>
+      </div>
+
+      <div class="stat-card rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Đã giao</span>
+          <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+            <i data-lucide="check-circle-2" class="text-emerald-600" style="width:16px;height:16px;"></i>
+          </div>
+        </div>
+        <div class="text-3xl font-extrabold text-emerald-600 tracking-tight" id="statDelivered">0</div>
+      </div>
+
+      <div class="stat-card rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cư dân ĐK</span>
+          <div class="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center">
+            <i data-lucide="users" class="text-brand-600" style="width:16px;height:16px;"></i>
+          </div>
+        </div>
+        <div class="text-3xl font-extrabold text-brand-600 tracking-tight" id="statResidents">0</div>
+      </div>
+    </div>
+
+    <!-- ═══ 2 COLUMNS ═══ -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Left: Orders (2 cols) -->
+      <div class="lg:col-span-2">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h2 class="font-bold text-slate-900 text-base">Đơn hàng</h2>
+              <p class="text-[11px] text-slate-500 mt-0.5">Copy mã đơn → dán vào shipper app</p>
+            </div>
+            <button onclick="loadOrders()"
+                    class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 transition flex items-center gap-1.5">
+              <i data-lucide="refresh-cw" style="width:12px;height:12px;"></i>
+              Làm mới
+            </button>
+          </div>
+          <div id="orderList" class="divide-y divide-slate-100">
+            <div class="p-8 text-center text-sm text-slate-400">Đang tải...</div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Stats -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-      <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-        <div class="text-[10px] text-slate-500 uppercase tracking-wide font-bold">Tổng đơn</div>
-        <div class="text-2xl font-extrabold text-slate-900" id="statTotal">0</div>
-      </div>
-      <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-        <div class="text-[10px] text-slate-500 uppercase tracking-wide font-bold">Chờ giao</div>
-        <div class="text-2xl font-extrabold text-amber-600" id="statPending">0</div>
-      </div>
-      <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-        <div class="text-[10px] text-slate-500 uppercase tracking-wide font-bold">Đã giao</div>
-        <div class="text-2xl font-extrabold text-emerald-600" id="statDelivered">0</div>
-      </div>
-      <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-        <div class="text-[10px] text-slate-500 uppercase tracking-wide font-bold">Cư dân ĐK</div>
-        <div class="text-2xl font-extrabold text-blue-600" id="statResidents">0</div>
-      </div>
-    </div>
+      <!-- Right: Residents + Shippers -->
+      <div class="space-y-6">
 
-    <!-- Orders -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-      <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-        <div>
-          <h2 class="font-bold text-slate-900">Danh sách đơn hàng</h2>
-          <p class="text-[11px] text-slate-500 mt-0.5">Copy mã đơn để dùng trong shipper app</p>
+        <!-- Residents -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center">
+              <i data-lucide="home" class="text-brand-600" style="width:15px;height:15px;"></i>
+            </div>
+            <div>
+              <div class="font-bold text-slate-900 text-sm">Cư dân đã ĐK</div>
+              <div class="text-[10px] text-slate-500">SĐT có thể nhận hàng</div>
+            </div>
+          </div>
+          <div id="residentList" class="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+            <div class="p-6 text-center text-xs text-slate-400">Đang tải...</div>
+          </div>
         </div>
-        <button onclick="loadOrders()" class="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1">
-          <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>
-          Làm mới
-        </button>
-      </div>
-      <div id="orderList" class="divide-y divide-slate-100">
-        <div class="p-6 text-center text-sm text-slate-400">Đang tải...</div>
-      </div>
-    </div>
 
-    <!-- Residents -->
-    <div class="mt-6 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-      <div class="px-4 py-3 border-b border-slate-200">
-        <h2 class="font-bold text-slate-900">Cư dân đã đăng ký</h2>
-        <p class="text-[11px] text-slate-500 mt-0.5">Những SĐT có thể nhận hàng</p>
-      </div>
-      <div id="residentList" class="divide-y divide-slate-100">
-        <div class="p-6 text-center text-sm text-slate-400">Đang tải...</div>
-      </div>
-    </div>
+        <!-- Shippers -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center">
+              <i data-lucide="truck" class="text-orange-600" style="width:15px;height:15px;"></i>
+            </div>
+            <div>
+              <div class="font-bold text-slate-900 text-sm">Shipper</div>
+              <div class="text-[10px] text-slate-500">Mã để login shipper app</div>
+            </div>
+          </div>
+          <div id="shipperList" class="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+            <div class="p-6 text-center text-xs text-slate-400">Đang tải...</div>
+          </div>
+        </div>
 
-    <!-- Shippers -->
-    <div class="mt-6 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-      <div class="px-4 py-3 border-b border-slate-200">
-        <h2 class="font-bold text-slate-900">Shipper đã đăng ký</h2>
-        <p class="text-[11px] text-slate-500 mt-0.5">Mã shipper để login vào shipper app</p>
       </div>
-      <div id="shipperList" class="divide-y divide-slate-100">
-        <div class="p-6 text-center text-sm text-slate-400">Đang tải...</div>
-      </div>
+
     </div>
 
   </main>
@@ -111,10 +206,15 @@
   <script>
     const API_BASE = window.location.origin;
 
-    const CARRIER_COLORS = {
-      'SHOPEE': { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200', icon: '🛍️' },
-      'LAZADA': { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200', icon: '📦' },
-      'GHN': { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-200', icon: '🚚' },
+    const CARRIER = {
+      'SHOPEE': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', icon: '🛍️', label: 'Shopee' },
+      'LAZADA': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', icon: '📦', label: 'Lazada' },
+      'GHN': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', icon: '🚚', label: 'GHN' },
+    };
+
+    const STATUS = {
+      PENDING: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label: 'Chờ giao', icon: 'clock' },
+      DELIVERED: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'Đã giao', icon: 'check-circle-2' },
     };
 
     async function loadOrders() {
@@ -122,7 +222,7 @@
         const res = await fetch(`${API_BASE}/api/v1/admin/mock-orders`);
         const data = await res.json();
 
-        if (!data.success) throw new Error('Load failed');
+        if (!data.success) throw new Error();
 
         const orders = data.orders;
         document.getElementById('statTotal').textContent = orders.length;
@@ -130,39 +230,44 @@
         document.getElementById('statDelivered').textContent = orders.filter(o => o.status === 'DELIVERED').length;
 
         document.getElementById('orderList').innerHTML = orders.map(o => {
-          const cc = CARRIER_COLORS[o.carrier] || { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', icon: '📮' };
-          const isDelivered = o.status === 'DELIVERED';
+          const cc = CARRIER[o.carrier] || { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', icon: '📮', label: o.carrier };
+          const st = STATUS[o.status] || STATUS.PENDING;
           const canRegister = !o.recipient_registered;
 
           return `
-            <div class="p-4 flex items-center justify-between hover:bg-slate-50 transition">
+            <div class="order-row p-5 flex items-center justify-between gap-4">
               <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="font-mono font-bold text-slate-900 text-sm">${o.order_code}</span>
-                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${cc.bg} ${cc.text} border ${cc.border}">
-                    ${cc.icon} ${o.carrier}
+                <div class="flex items-center gap-2 flex-wrap mb-2">
+                  <span class="font-mono font-extrabold text-slate-900 text-sm tracking-tight">${o.order_code}</span>
+                  <span class="badge-carrier ${cc.bg} ${cc.text} border ${cc.border}">
+                    ${cc.icon} ${cc.label}
                   </span>
-                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    isDelivered ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                  }">
-                    ${isDelivered ? '✓ Đã giao' : '⏳ Chờ giao'}
+                  <span class="badge-carrier ${st.bg} ${st.text} border ${st.border} flex items-center gap-1">
+                    <i data-lucide="${st.icon}" style="width:10px;height:10px;"></i>
+                    ${st.label}
                   </span>
                 </div>
-                <div class="text-[11px] text-slate-500">
-                  Giao cho <span class="font-mono font-bold">${o.recipient_phone}</span>
-                  ${o.apartment ? `· Căn hộ <b>${o.apartment}</b>` : ''}
-                  · Size <b>${o.size}</b>
+                <div class="text-xs text-slate-500">
+                  Giao cho <span class="font-mono font-bold text-slate-700">${o.recipient_phone}</span>
+                  ${o.apartment ? ` · Căn hộ <b class="text-slate-700">${o.apartment}</b>` : ''}
+                  · Size <b class="text-slate-700">${o.size}</b>
                 </div>
                 ${canRegister ? `
-                  <div class="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
+                  <div class="text-[10px] text-amber-600 font-semibold mt-1.5 flex items-center gap-1">
                     <i data-lucide="alert-triangle" style="width:10px;height:10px;"></i>
                     Cư dân chưa đăng ký
                   </div>
-                ` : ''}
+                ` : `
+                  <div class="text-[10px] text-emerald-600 font-semibold mt-1.5 flex items-center gap-1">
+                    <i data-lucide="check" style="width:10px;height:10px;"></i>
+                    Cư dân đã đăng ký
+                  </div>
+                `}
               </div>
-              <button onclick="copyOrder('${o.order_code}')" 
-                      class="ml-3 px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-700 text-white text-xs font-bold whitespace-nowrap transition">
-                📋 Copy
+              <button onclick="copyOrder('${o.order_code}')"
+                      class="copy-btn shrink-0 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-700 text-white text-xs font-bold whitespace-nowrap shadow-sm hover:shadow-md flex items-center gap-1.5">
+                <i data-lucide="copy" style="width:13px;height:13px;"></i>
+                Copy
               </button>
             </div>
           `;
@@ -171,42 +276,38 @@
         lucide.createIcons();
       } catch (e) {
         document.getElementById('orderList').innerHTML =
-          '<div class="p-6 text-center text-sm text-rose-500">Không tải được đơn hàng</div>';
+          '<div class="p-8 text-center text-sm text-rose-500">Không tải được đơn hàng</div>';
       }
     }
 
     async function loadResidents() {
       try {
-        // Gọi API mới — cần thêm ở backend
         const res = await fetch(`${API_BASE}/api/v1/admin/residents`);
-        if (res.status === 404) {
-          document.getElementById('residentList').innerHTML =
-            '<div class="p-6 text-center text-sm text-slate-400">API chưa có — cần thêm</div>';
-          return;
-        }
         const data = await res.json();
         document.getElementById('statResidents').textContent = data.total || 0;
 
         if (!data.residents || !data.residents.length) {
           document.getElementById('residentList').innerHTML =
-            '<div class="p-6 text-center text-sm text-slate-400">Chưa có cư dân nào đăng ký</div>';
+            '<div class="p-6 text-center text-xs text-slate-400">Chưa có cư dân nào</div>';
           return;
         }
 
         document.getElementById('residentList').innerHTML = data.residents.map(r => `
-          <div class="p-3 flex items-center justify-between hover:bg-slate-50">
-            <div>
-              <div class="font-mono font-bold text-slate-900 text-sm">${r.phone_masked}</div>
-              <div class="text-[11px] text-slate-500">${r.name} · ${r.apartment}</div>
+          <div class="p-3.5 flex items-center justify-between hover:bg-slate-50 transition">
+            <div class="min-w-0">
+              <div class="font-mono font-bold text-slate-900 text-xs">${r.phone_masked}</div>
+              <div class="text-[10px] text-slate-500 truncate">${r.name} · ${r.apartment}</div>
             </div>
-            <span class="text-[10px] font-bold px-2 py-1 rounded-full ${
-              r.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+            <span class="text-[9px] font-extrabold px-2 py-1 rounded-full ${
+              r.status === 'ACTIVE'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                : 'bg-rose-50 text-rose-700 border border-rose-200'
             }">${r.status}</span>
           </div>
         `).join('');
       } catch (e) {
         document.getElementById('residentList').innerHTML =
-          '<div class="p-6 text-center text-sm text-rose-500">Lỗi tải cư dân</div>';
+          '<div class="p-6 text-center text-xs text-rose-500">Lỗi tải</div>';
       }
     }
 
@@ -217,32 +318,31 @@
 
         if (!data.shippers || !data.shippers.length) {
           document.getElementById('shipperList').innerHTML =
-            '<div class="p-6 text-center text-sm text-slate-400">Chưa có shipper nào đăng ký</div>';
+            '<div class="p-6 text-center text-xs text-slate-400">Chưa có shipper nào</div>';
           return;
         }
 
         document.getElementById('shipperList').innerHTML = data.shippers.map(s => {
-          const cc = CARRIER_COLORS[s.carrier] || { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', icon: '📮' };
+          const cc = CARRIER[s.carrier] || { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', icon: '📮' };
+          const statusCls =
+            s.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+            s.status === 'TERMINATED' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+            'bg-amber-50 text-amber-700 border-amber-200';
           return `
-            <div class="p-3 flex items-center justify-between hover:bg-slate-50">
-              <div>
-                <div class="font-mono font-bold text-slate-900 text-sm">${s.code}</div>
-                <div class="text-[11px] text-slate-500">
-                  <span class="font-bold ${cc.text}">${cc.icon} ${s.carrier}</span>
-                  · ${s.name} · ${s.phone_masked}
+            <div class="p-3.5 flex items-center justify-between hover:bg-slate-50 transition">
+              <div class="min-w-0">
+                <div class="font-mono font-bold text-slate-900 text-xs">${s.code}</div>
+                <div class="text-[10px] text-slate-500 truncate">
+                  <span class="${cc.text} font-bold">${cc.icon} ${s.carrier}</span> · ${s.name}
                 </div>
               </div>
-              <span class="text-[10px] font-bold px-2 py-1 rounded-full ${
-                s.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' :
-                s.status === 'TERMINATED' ? 'bg-rose-100 text-rose-700' :
-                'bg-amber-100 text-amber-700'
-              }">${s.status}</span>
+              <span class="text-[9px] font-extrabold px-2 py-1 rounded-full border ${statusCls}">${s.status}</span>
             </div>
           `;
         }).join('');
       } catch (e) {
         document.getElementById('shipperList').innerHTML =
-          '<div class="p-6 text-center text-sm text-rose-500">Lỗi tải shipper</div>';
+          '<div class="p-6 text-center text-xs text-rose-500">Lỗi tải</div>';
       }
     }
 

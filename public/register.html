@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#6366F1">
+  <title>Đăng ký dịch vụ — Smart Box</title>
+  <link rel="stylesheet" href="/assets/premium.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        fontFamily: {
+          sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+          mono: ['JetBrains Mono', 'monospace']
+        },
+        colors: {
+          brand: { 50:'#EEF2FF', 100:'#E0E7FF', 500:'#6366F1', 600:'#4F46E5', 700:'#4338CA' }
+        }
+      }}
+    }
+  </script>
+  <style>
+    .otp-box {
+      width: 48px; height: 58px; text-align: center;
+      font-size: 22px; font-weight: 700;
+      border: 2px solid #E2E8F0; border-radius: 14px;
+      font-family: 'JetBrains Mono', monospace;
+      outline: none; transition: all .15s;
+    }
+    .otp-box:focus {
+      border-color: #6366F1;
+      box-shadow: 0 0 0 4px rgba(99,102,241,.1);
+    }
+    .otp-box.filled {
+      border-color: #6366F1;
+      background: #EEF2FF;
+    }
+    .glass-header {
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(12px);
+    }
+  </style>
+</head>
+<body class="font-sans bg-gradient-to-b from-slate-50 via-white to-slate-50 min-h-screen antialiased">
+
+  <header class="sticky top-0 z-50 glass-header border-b border-slate-200/60">
+    <div class="max-w-md mx-auto px-5 h-14 flex items-center gap-3">
+      <a href="/" class="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center transition active:scale-95">
+        <i data-lucide="arrow-left" class="text-slate-700" style="width:20px;height:20px;"></i>
+      </a>
+      <div class="flex-1">
+        <div class="font-extrabold text-slate-900 text-sm leading-none tracking-tight">Đăng ký dịch vụ</div>
+        <div class="text-[10px] text-slate-500 mt-0.5" id="stepLabel">Bước 1/2</div>
+      </div>
+      <img src="/assets/uth-logo.png" alt="UTH" class="logo-uth h-6 w-auto opacity-80">
+    </div>
+    <div class="h-1 bg-slate-100">
+      <div id="progressBar" class="h-full bg-gradient-to-r from-brand-500 to-brand-700 transition-all duration-500" style="width: 50%;"></div>
+    </div>
+  </header>
+
+  <main class="max-w-md mx-auto px-5 pt-8 pb-12">
+
+    <!-- ═══ STEP 1: Form ═══ -->
+    <section id="step1" class="animate-slide-up">
+      <div class="text-center mb-8">
+        <div class="w-20 h-20 mx-auto mb-5 rounded-3xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-xl shadow-brand-500/30">
+          <i data-lucide="home" class="text-white" style="width:36px;height:36px;"></i>
+        </div>
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight mb-1.5">
+          Đăng ký nhận hàng tại tủ
+        </h1>
+        <p class="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+          Đăng ký 1 lần — nhận hàng mọi lúc. Chỉ cần SĐT để xác thực.
+        </p>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-4">
+        <div class="mb-4">
+          <label class="block text-[11px] font-extrabold text-slate-700 mb-2 uppercase tracking-wide">
+            Số điện thoại <span class="text-rose-500">*</span>
+          </label>
+          <div class="relative">
+            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+              <i data-lucide="phone" style="width:18px;height:18px;"></i>
+            </div>
+            <input id="phone" type="tel" inputmode="numeric" maxlength="12" placeholder="0769 259 051"
+                   class="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none text-slate-900 font-mono font-semibold text-base transition">
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-[11px] font-extrabold text-slate-700 mb-2 uppercase tracking-wide">
+            Họ tên <span class="text-rose-500">*</span>
+          </label>
+          <div class="relative">
+            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+              <i data-lucide="user" style="width:18px;height:18px;"></i>
+            </div>
+            <input id="name" type="text" placeholder="Nguyễn Văn A"
+                   class="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none text-slate-900 font-medium text-base transition">
+          </div>
+        </div>
+
+        <div class="mb-6">
+          <label class="block text-[11px] font-extrabold text-slate-700 mb-2 uppercase tracking-wide">
+            Căn hộ <span class="text-rose-500">*</span>
+          </label>
+          <div class="relative">
+            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+              <i data-lucide="building" style="width:18px;height:18px;"></i>
+            </div>
+            <input id="apartment" type="text" placeholder="A-501"
+                   class="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none text-slate-900 font-mono font-semibold text-base uppercase transition">
+          </div>
+        </div>
+
+        <div id="error1" class="hidden mb-4 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium"></div>
+
+        <button id="btn1" onclick="submitForm()"
+                class="btn-shine w-full py-4 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 text-white font-bold text-sm shadow-lg shadow-brand-500/30 flex items-center justify-center gap-2 disabled:opacity-50">
+          <span>Nhận mã OTP</span>
+          <i data-lucide="arrow-right" style="width:16px;height:16px;"></i>
+        </button>
+      </div>
+
+      <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <div class="flex gap-3">
+          <i data-lucide="shield-check" class="text-blue-600 shrink-0 mt-0.5" style="width:16px;height:16px;"></i>
+          <div class="text-[11px] text-blue-900 leading-relaxed">
+            <b>Bảo mật:</b> SĐT chỉ dùng để xác thực nhận hàng. Không chia sẻ cho bên thứ 3.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ STEP 2: OTP ═══ -->
+    <section id="step2" class="hidden">
+      <div class="text-center mb-8">
+        <div class="w-20 h-20 mx-auto mb-5 rounded-3xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-xl shadow-brand-500/30">
+          <i data-lucide="message-square" class="text-white" style="width:36px;height:36px;"></i>
+        </div>
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight mb-1.5">Nhập mã xác thực</h1>
+        <p class="text-xs text-slate-500">
+          Mã 6 số đã gửi tới<br>
+          <span id="phoneDisplay" class="font-mono font-bold text-slate-900 text-sm"></span>
+        </p>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-4">
+        <div class="flex justify-center gap-2 mb-6" id="otpInputs">
+          <input class="otp-box" maxlength="1" inputmode="numeric" type="tel">
+          <input class="otp-box" maxlength="1" inputmode="numeric" type="tel">
+          <input class="otp-box" maxlength="1" inputmode="numeric" type="tel">
+          <input class="otp-box" maxlength="1" inputmode="numeric" type="tel">
+          <input class="otp-box" maxlength="1" inputmode="numeric" type="tel">
+          <input class="otp-box" maxlength="1" inputmode="numeric" type="tel">
+        </div>
+
+        <div class="flex items-center justify-center gap-2 mb-5 text-xs text-slate-500">
+          <i data-lucide="clock" style="width:13px;height:13px;"></i>
+          <span>Hết hạn sau <b id="timer" class="font-mono text-slate-900">5:00</b></span>
+        </div>
+
+        <div id="error2" class="hidden mb-4 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium"></div>
+
+        <button id="btn2" onclick="submitOtp()"
+                class="btn-shine w-full py-4 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 text-white font-bold text-sm shadow-lg shadow-brand-500/30 flex items-center justify-center gap-2 disabled:opacity-50">
+          <i data-lucide="shield-check" style="width:16px;height:16px;"></i>
+          <span>Xác thực</span>
+        </button>
+
+        <button onclick="resend()" class="w-full mt-3 py-3 text-slate-600 hover:text-brand-600 text-xs font-semibold transition flex items-center justify-center gap-1.5">
+          <i data-lucide="refresh-cw" style="width:13px;height:13px;"></i>
+          Không nhận được mã? Gửi lại
+        </button>
+      </div>
+    </section>
+
+    <!-- ═══ STEP 3: Success ═══ -->
+    <section id="step3" class="hidden">
+      <div class="text-center">
+        <div class="w-24 h-24 mx-auto mb-5 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-2xl shadow-emerald-500/40 animate-scale-in">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight mb-1.5">Đăng ký thành công!</h1>
+        <p class="text-xs text-slate-500 mb-6">Từ giờ bạn có thể nhận hàng tại tủ</p>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-5 text-left">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center shrink-0">
+              <i data-lucide="home" class="text-brand-600" style="width:22px;height:22px;"></i>
+            </div>
+            <div class="flex-1">
+              <div class="text-xs font-bold text-slate-900" id="successName">Nguyễn Văn A</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">
+                Căn hộ <b id="successApt">A-501</b> ·
+                <span class="font-mono" id="successPhone">+84 769 259 051</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-left">
+          <div class="flex gap-3">
+            <i data-lucide="info" class="text-amber-600 shrink-0 mt-0.5" style="width:16px;height:16px;"></i>
+            <div class="text-[11px] text-amber-900 leading-relaxed">
+              Khi có hàng, bạn sẽ nhận SMS kèm mã OTP để mở tủ. Không cần cài app.
+            </div>
+          </div>
+        </div>
+
+        <button onclick="location.href='/'"
+                class="btn-shine w-full py-4 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 text-white font-bold text-sm shadow-lg shadow-brand-500/30">
+          Về trang chủ
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="/assets/toast.js"></script>
+  <script>
+    const API_BASE = window.location.origin;
+    const PHONE_FMT = v => v.replace(/\D/g, '').replace(/(\d{3,4})(\d{3})(\d{3,4})/, '$1 $2 $3').trim();
+
+    let state = { step: 1, phone: '', name: '', apartment: '', timerId: null, seconds: 300 };
+
+    // Format phone
+    document.getElementById('phone').addEventListener('input', e => {
+      let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+      e.target.value = v ? PHONE_FMT(v) : '';
+    });
+
+    // Auto uppercase apartment
+    document.getElementById('apartment').addEventListener('input', e => {
+      e.target.value = e.target.value.toUpperCase();
+    });
+
+    function showStep(n) {
+      state.step = n;
+      for (let i = 1; i <= 3; i++) {
+        const el = document.getElementById('step' + i);
+        el.classList.toggle('hidden', i !== n);
+        if (i === n) {
+          el.classList.remove('animate-slide-up');
+          void el.offsetWidth;
+          el.classList.add('animate-slide-up');
+        }
+      }
+      document.getElementById('stepLabel').textContent = n < 3 ? `Bước ${n}/2` : 'Hoàn tất';
+      document.getElementById('progressBar').style.width = (n === 1 ? 50 : 100) + '%';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function submitForm() {
+      const phoneRaw = document.getElementById('phone').value.replace(/\D/g, '');
+      const name = document.getElementById('name').value.trim();
+      const apartment = document.getElementById('apartment').value.trim();
+      const errEl = document.getElementById('error1');
+      errEl.classList.add('hidden');
+
+      if (phoneRaw.length < 10) return showErr(errEl, 'SĐT không hợp lệ');
+      if (!name) return showErr(errEl, 'Nhập họ tên');
+      if (!apartment) return showErr(errEl, 'Nhập số căn hộ');
+
+      state.phone = phoneRaw;
+      state.name = name;
+      state.apartment = apartment;
+
+      const btn = document.getElementById('btn1');
+      btn.disabled = true;
+      btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" style="width:16px;height:16px;"></i> Đang gửi...';
+      lucide.createIcons();
+
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/resident/request-otp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: phoneRaw, name, apartment }),
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>Nhận mã OTP</span><i data-lucide="arrow-right" style="width:16px;height:16px;"></i>';
+          lucide.createIcons();
+          return showErr(errEl, data.message || 'Không gửi được OTP');
+        }
+
+        document.getElementById('phoneDisplay').textContent = PHONE_FMT(phoneRaw);
+        startTimer();
+        showStep(2);
+        setTimeout(() => document.querySelector('.otp-box').focus(), 300);
+        if (window.showToast) showToast('OTP đã gửi', 'success');
+      } catch (e) {
+        btn.disabled = false;
+        btn.innerHTML = '<span>Nhận mã OTP</span><i data-lucide="arrow-right" style="width:16px;height:16px;"></i>';
+        lucide.createIcons();
+        showErr(errEl, 'Lỗi kết nối');
+      }
+    }
+
+    function showErr(el, msg) {
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    // OTP inputs
+    const otpBoxes = document.querySelectorAll('.otp-box');
+    otpBoxes.forEach((box, idx) => {
+      box.addEventListener('input', e => {
+        e.target.value = e.target.value.replace(/\D/g, '').slice(-1);
+        e.target.classList.toggle('filled', !!e.target.value);
+        if (e.target.value && idx < 5) otpBoxes[idx + 1].focus();
+        if (getOtp().length === 6) setTimeout(submitOtp, 150);
+      });
+      box.addEventListener('keydown', e => {
+        if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+          otpBoxes[idx - 1].focus();
+          otpBoxes[idx - 1].value = '';
+          otpBoxes[idx - 1].classList.remove('filled');
+        }
+      });
+      box.addEventListener('paste', e => {
+        e.preventDefault();
+        const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+        text.split('').forEach((ch, i) => {
+          if (otpBoxes[i]) {
+            otpBoxes[i].value = ch;
+            otpBoxes[i].classList.add('filled');
+          }
+        });
+        otpBoxes[Math.min(text.length, 5)].focus();
+        if (text.length === 6) setTimeout(submitOtp, 150);
+      });
+    });
+
+    function getOtp() {
+      return Array.from(otpBoxes).map(b => b.value).join('');
+    }
+
+    function clearOtp() {
+      otpBoxes.forEach(b => { b.value = ''; b.classList.remove('filled'); });
+      otpBoxes[0].focus();
+    }
+
+    function startTimer() {
+      state.seconds = 300;
+      if (state.timerId) clearInterval(state.timerId);
+      updateTimer();
+      state.timerId = setInterval(() => {
+        state.seconds--;
+        updateTimer();
+        if (state.seconds <= 0) {
+          clearInterval(state.timerId);
+          document.getElementById('timer').textContent = 'Hết hạn';
+          document.getElementById('timer').classList.add('text-rose-600');
+        }
+      }, 1000);
+    }
+
+    function updateTimer() {
+      const m = Math.floor(state.seconds / 60);
+      const s = String(state.seconds % 60).padStart(2, '0');
+      const el = document.getElementById('timer');
+      el.textContent = `${m}:${s}`;
+      el.classList.toggle('text-rose-600', state.seconds < 60);
+      el.classList.toggle('text-slate-900', state.seconds >= 60);
+    }
+
+    async function submitOtp() {
+      const code = getOtp();
+      const errEl = document.getElementById('error2');
+      errEl.classList.add('hidden');
+
+      if (code.length !== 6) return showErr(errEl, 'Nhập đủ 6 số');
+
+      const btn = document.getElementById('btn2');
+      btn.disabled = true;
+      btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" style="width:16px;height:16px;"></i> Đang xác thực...';
+      lucide.createIcons();
+
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/resident/verify-otp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: state.phone, otp_code: code }),
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+          btn.disabled = false;
+          btn.innerHTML = '<i data-lucide="shield-check" style="width:16px;height:16px;"></i><span>Xác thực</span>';
+          lucide.createIcons();
+          clearOtp();
+          return showErr(errEl, data.message || 'OTP không đúng');
+        }
+
+        if (state.timerId) clearInterval(state.timerId);
+
+        document.getElementById('successName').textContent = data.resident.name;
+        document.getElementById('successApt').textContent = data.resident.apartment;
+        document.getElementById('successPhone').textContent = PHONE_FMT(data.resident.phone.replace(/^\+84/, '0'));
+        showStep(3);
+        if (window.fireConfetti) fireConfetti(50);
+        if (window.notifyUser) notifyUser();
+      } catch (e) {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="shield-check" style="width:16px;height:16px;"></i><span>Xác thực</span>';
+        lucide.createIcons();
+        showErr(errEl, 'Lỗi kết nối');
+      }
+    }
+
+    async function resend() {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/resident/request-otp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: state.phone, name: state.name, apartment: state.apartment }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          clearOtp();
+          startTimer();
+          if (window.showToast) showToast('Đã gửi lại OTP', 'success');
+        } else {
+          if (window.showToast) showToast(data.message || 'Không gửi được', 'error');
+        }
+      } catch (e) {
+        if (window.showToast) showToast('Lỗi kết nối', 'error');
+      }
+    }
+
+    lucide.createIcons();
+  </script>
+</body>
+</html>
