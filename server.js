@@ -1100,6 +1100,79 @@ app.get('/api/v1/admin/residents', (req, res) => {
   });
 });
 /**
+ * POST /api/v1/admin/seed-demo
+ * Tạo nhanh data demo: 3 shipper + 2 cư dân
+ */
+app.post('/api/v1/admin/seed-demo', (req, res) => {
+  const { adminKey } = req.body || {};
+  const ADMIN_SECRET = process.env.ADMIN_SECRET_KEY || 'admin@smartbox123';
+
+  if (adminKey !== ADMIN_SECRET) {
+    return res.status(403).json({ success: false, message: 'Sai mật khẩu' });
+  }
+
+  const now = Date.now();
+  let added = { shippers: 0, residents: 0 };
+
+  // ═══ 3 shipper ═══
+  const demoShipPers = [
+    { code: 'SPX-001', phone: '+84911111111', name: 'Lê Văn Ship', carrier: 'SHOPEE' },
+    { code: 'GHN-001', phone: '+84922222222', name: 'Trần Văn Giao', carrier: 'GHN' },
+    { code: 'LZD-001', phone: '+84933333333', name: 'Phạm Văn L', carrier: 'LAZADA' },
+  ];
+
+  demoShipPers.forEach(s => {
+    if (!db.shippers.has(s.code)) {
+      db.shippers.set(s.code, {
+        code: s.code,
+        phone: s.phone,
+        name: s.name,
+        carrier: s.carrier,
+        carrier_contract_id: null,
+        status: 'ACTIVE',
+        registered_at: now,
+        last_login: null,
+        total_deliveries: 0,
+        total_disputes: 0,
+        incidents: [],
+      });
+      added.shippers++;
+    }
+  });
+
+  // ═══ 2 cư dân ═══
+  const demoResidents = [
+    { phone: '+84769259051', name: 'Nguyễn Văn A', apartment: 'A-501' },
+    { phone: '+84912345678', name: 'Trần Thị B', apartment: 'A-502' },
+  ];
+
+  demoResidents.forEach(r => {
+    if (!db.residents.has(r.phone)) {
+      db.residents.set(r.phone, {
+        phone: r.phone,
+        name: r.name,
+        apartment: r.apartment,
+        email: null,
+        registered_at: now,
+        status: 'ACTIVE',
+        packages_received: 0,
+        packages_pending: 0,
+      });
+      added.residents++;
+    }
+  });
+
+  persistState();
+
+  console.log('🌱 [SEED] Demo data created:', added);
+
+  return res.json({
+    success: true,
+    message: 'Tạo data demo thành công',
+    added,
+  });
+});
+/**
  * GET /api/v1/admin/shippers
  * Admin xem danh sách shipper
  */

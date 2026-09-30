@@ -360,6 +360,22 @@
                 </button>
               </div>
             </div>
+            <!-- Seed demo data -->
+            <div class="bg-white rounded-2xl border border-brand-200 shadow-sm p-6 mb-4">
+              <div class="flex items-start gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center shrink-0">
+                  <i data-lucide="sparkles" class="text-brand-600" style="width:20px;height:20px;"></i>
+                </div>
+                <div>
+                  <h3 class="font-bold text-slate-900 text-base">Tạo data demo</h3>
+                  <p class="text-[11px] text-slate-500 mt-0.5">Tạo nhanh 3 shipper + 2 cư dân để test</p>
+                </div>
+              </div>
+              <button onclick="seedDemo()"
+                      class="w-full py-3 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 text-white font-bold text-sm shadow-lg shadow-brand-500/30">
+                🌱 Tạo data demo
+              </button>
+            </div>
 
             <!-- Reset test data -->
             <div class="bg-white rounded-2xl border-2 border-rose-200 shadow-sm p-6">
@@ -964,7 +980,24 @@
         }
       } catch (e) {}
     }
-
+    async function seedDemo() {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/admin/seed-demo`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ adminKey }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Đã tạo: ${data.added.shippers} shipper, ${data.added.residents} cư dân`, 'success');
+          loadOverview();
+        } else {
+          showToast(data.message || 'Lỗi', 'error');
+        }
+      } catch (e) {
+        showToast('Lỗi kết nối', 'error');
+      }
+    }
     async function resetTestData() {
       const confirm = document.getElementById('resetConfirm').value.trim();
       if (confirm !== 'RESET') {
