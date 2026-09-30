@@ -803,6 +803,243 @@ app.locals.helpers = {
   getHardwareStatus,
 };
 // ═══════════════════════════════════════════════════════════
+// V2 — RESIDENT REGISTRATION
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * POST /api/v1/resident/request-otp
+ * Bước 1: Cư dân nhập SĐT + tên + căn hộ → nhận OTP
+ */
+app.post('/api/v1/resident/request-otp', async (req, res) => {
+  try {
+    const { phone, name, apartment, email } = req.body || {};
+
+    // Validate
+    if (!phone || !name || !apartment) {
+      return res.status(400).json({
+        success: false,
+        message: 'Thiếu thông tin: phone, name, apartment',
+      });
+    }
+
+    const normalized = normalizePhoneVN(phone);
+    if (!normalized) {
+      return res.status(400).json({ success: false, message: 'SĐT không hợp lệ' });
+    }
+
+    // Check đã đăng ký chưa
+    const existing = db.residents.get(normalized);
+    if (existing && existing.status === 'ACTIVE') {
+      return res.status(400).json({
+        success: false,
+        message: 'SĐT đã đăng ký dịch vụ',
+        apartment: existing.apartment,
+      });
+    }
+
+    // Rate limit: 3 lần/giờ/SĐT
+    const now = Date.now();
+    const key = 'resident_otp:' + normalized;
+    const timestamps = (db._residentRateLimit?.get(key) || []).filter(t => now - t < 3600000);
+
+    if (timestamps.length >= 3) {
+      return res.status(429).json({
+        success: false,
+        message: 'Bạn đã yêu cầu OTP quá nhiều lần. Vui lòng thử lại sau 1 giờ.',
+      });
+    }
+
+    if (!db._residentRateLimit) db._residentRateLimit = new Map();
+    timestamps.push(now);
+    db._residentRateLimit.set(key, timestamps);
+
+    // Xóa OTP cũ của SĐT này (nếu có)
+    for (const [code, otp] of db.otps.entries()) {
+      if (otp.otp_type === 'resident_register' && otp.recipient_phone === normalized) {
+        db.otps.delete(code);
+      }
+    }
+
+    // Sinh OTP mới
+    const otp = generateOtpCode();
+    db.otps.set(otp, {
+      otp_code: otp,
+      otp_type: 'resident_register',
+      recipient_phone: normalized,
+      expires_at: now + OTP_TTL_MS,
+      used: false,
+      metadata: {
+        name: String(name).trim(),
+        apartment: String(apartment).trim().toUpperCase(),
+        email: email ? String(email).trim() : null,
+      },
+    });
+
+    // Gửi SMS
+    const msg = `[SMARTBOX] Ma xac thuc dang ky dich vu: ${otp}\n` +
+                `Can ho: ${apartment}\n` +
+                `Hieu luc 5 phut.\n` +
+                `Hotline: 0356 297 703`;
+    const smsResult = await sendSMSViaAndroid(normalized, msg);
+
+    console.log(`📝 [RESIDENT] OTP gửi tới ${normalized} (${apartment})`);
+
+    return res.json({
+      success: true,
+      message: smsResult.sent ? 'OTP đã gửi tới SĐT của bạn' : 'Không gửi được SMS',
+      otp_sent: smsResult.sent,
+      otp_send_error: smsResult.sent ? null : smsResult.error,
+      phone_masked: maskPhone(normalized),
+    });
+  } catch (err) {
+    console.error('[RESIDENT OTP] Error:', err.message);
+    return res.status(500).json({ success: false, message: 'Internal error' });
+  }
+});
+
+/**
+ * POST /api/v1/resident/verify-otp
+ * Bước 2: Xác thực OTP → hoàn tất đăng ký
+ */
+app.post('/api/v1/resident/verify-otp', (req, res) => {
+  try {
+    const { phone, otp_code } = req.body || {};
+
+    if (!phone || !otp_code) {
+      return res.status(400).json({
+        success: false,
+        message: 'Thiếu phone hoặc otp_code',
+      });
+    }
+
+    const normalized = normalizePhoneVN(phone);
+    if (!normalized) {
+      return res.status(400).json({ success: false, message: 'SĐT không hợp lệ' });
+    }
+
+    const code = String(otp_code).trim();
+    const now = Date.now();
+
+    // Security check
+    const security = getOtpSecurity('resident:' + normalized);
+    if (security.locked_until && security.locked_until > now) {
+      const retryAfterSec = Math.ceil((security.locked_until - now) / 1000);
+      res.set('Retry-After', String(retryAfterSec));
+      return res.status(429).json({
+        success: false,
+        message: 'Quá nhiều lần sai. Vui lòng thử lại sau.',
+        locked_until: security.locked_until,
+      });
+    }
+
+    const otpRecord = db.otps.get(code);
+    const valid = otpRecord
+      && !otpRecord.used
+      && otpRecord.otp_type === 'resident_register'
+      && otpRecord.recipient_phone === normalized
+      && otpRecord.expires_at > now;
+
+    if (!valid) {
+      security.failed_attempts += 1;
+
+      if (security.failed_attempts >= OTP_MAX_FAILURES) {
+        security.locked_until = now + OTP_LOCKOUT_MS;
+        security.failed_attempts = OTP_MAX_FAILURES;
+        return res.status(429).json({
+          success: false,
+          message: 'Quá nhiều lần sai. Khóa 15 phút.',
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: 'OTP không đúng hoặc đã hết hạn',
+        remaining_attempts: OTP_MAX_FAILURES - security.failed_attempts,
+      });
+    }
+
+    // Tạo resident
+    const meta = otpRecord.metadata || {};
+    const resident = {
+      phone: normalized,
+      name: meta.name || 'Cư dân',
+      apartment: meta.apartment || '—',
+      email: meta.email || null,
+      registered_at: now,
+      status: 'ACTIVE',
+      packages_received: 0,
+      packages_pending: 0,
+    };
+
+    db.residents.set(normalized, resident);
+
+    // Xóa OTP
+    otpRecord.used = true;
+    db.otps.delete(code);
+
+    // Reset security
+    security.failed_attempts = 0;
+    security.locked_until = 0;
+
+    persistState();
+
+    console.log(`✅ [RESIDENT] Đăng ký thành công: ${normalized} (${resident.apartment})`);
+
+    return res.json({
+      success: true,
+      message: 'Đăng ký thành công',
+      resident: {
+        phone: resident.phone,
+        name: resident.name,
+        apartment: resident.apartment,
+        status: resident.status,
+      },
+    });
+  } catch (err) {
+    console.error('[RESIDENT VERIFY] Error:', err.message);
+    return res.status(500).json({ success: false, message: 'Internal error' });
+  }
+});
+
+/**
+ * GET /api/v1/resident/check?phone=0912345678
+ * Check SĐT đã đăng ký chưa
+ */
+app.get('/api/v1/resident/check', (req, res) => {
+  const { phone } = req.query;
+
+  const normalized = normalizePhoneVN(phone);
+  if (!normalized) {
+    return res.status(400).json({ success: false, message: 'SĐT không hợp lệ' });
+  }
+
+  const resident = db.residents.get(normalized);
+
+  if (!resident) {
+    return res.json({
+      success: true,
+      registered: false,
+      message: 'SĐT chưa đăng ký dịch vụ',
+    });
+  }
+
+  // Mask tên
+  const maskedName = resident.name.length > 2
+    ? resident.name[0] + '***' + resident.name[resident.name.length - 1]
+    : resident.name;
+
+  return res.json({
+    success: true,
+    registered: true,
+    resident: {
+      name: maskedName,
+      apartment: resident.apartment,
+      status: resident.status,
+      packages_pending: resident.packages_pending,
+    },
+  });
+});
+// ═══════════════════════════════════════════════════════════
 // QR CODE GENERATOR (server-side, không phụ thuộc client)
 // ═══════════════════════════════════════════════════════════
 const QRCode = require('qrcode');
