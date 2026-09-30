@@ -998,22 +998,7 @@
         showToast('Lỗi kết nối', 'error');
       }
     }
-      try {
-        const res = await fetch(`${API_BASE}/api/v1/admin/seed-demo`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ adminKey }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          showToast(`Đã tạo: ${data.added.shippers} shipper, ${data.added.residents} cư dân`, 'success');
-          loadOverview();
-        } else {
-          showToast(data.message || 'Lỗi', 'error');
-        }
-      } catch (e) {
-        showToast('Lỗi kết nối', 'error');
-      }
+     
     
     async function resetTestData() {
       const confirm = document.getElementById('resetConfirm').value.trim();
