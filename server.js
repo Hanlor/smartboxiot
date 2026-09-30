@@ -1173,6 +1173,78 @@ app.post('/api/v1/admin/seed-demo', (req, res) => {
   });
 });
 /**
+ * POST /api/v1/admin/force-seed-demo
+ * Xóa shipper + residents cũ, tạo lại data demo sạch
+ */
+app.post('/api/v1/admin/force-seed-demo', (req, res) => {
+  const { adminKey } = req.body || {};
+  const ADMIN_SECRET = process.env.ADMIN_SECRET_KEY || 'admin@smartbox123';
+
+  if (adminKey !== ADMIN_SECRET) {
+    return res.status(403).json({ success: false, message: 'Sai mật khẩu' });
+  }
+
+  const now = Date.now();
+
+  // Xóa sạch
+  db.shippers.clear();
+  db.residents.clear();
+  if (db.deliveryLogs) db.deliveryLogs = [];
+
+  // Tạo 3 shipper
+  const demoShipPers = [
+    { code: 'SPX-001', phone: '+84911111111', name: 'Le Van Ship', carrier: 'SHOPEE' },
+    { code: 'GHN-001', phone: '+84922222222', name: 'Tran Van Giao', carrier: 'GHN' },
+    { code: 'LZD-001', phone: '+84933333333', name: 'Pham Van L', carrier: 'LAZADA' },
+  ];
+
+  demoShipPers.forEach(s => {
+    db.shippers.set(s.code, {
+      code: s.code,
+      phone: s.phone,
+      name: s.name,
+      carrier: s.carrier,
+      carrier_contract_id: null,
+      status: 'ACTIVE',
+      registered_at: now,
+      last_login: null,
+      total_deliveries: 0,
+      total_disputes: 0,
+      incidents: [],
+    });
+  });
+
+  // Tạo 2 cư dân
+  const demoResidents = [
+    { phone: '+84769259051', name: 'Nguyen Van A', apartment: 'A-501' },
+    { phone: '+84912345678', name: 'Tran Thi B', apartment: 'A-502' },
+  ];
+
+  demoResidents.forEach(r => {
+    db.residents.set(r.phone, {
+      phone: r.phone,
+      name: r.name,
+      apartment: r.apartment,
+      email: null,
+      registered_at: now,
+      status: 'ACTIVE',
+      packages_received: 0,
+      packages_pending: 0,
+    });
+  });
+
+  persistState();
+
+  console.log('🌱 [FORCE SEED] Data reset + seed:', { shippers: 3, residents: 2 });
+
+  return res.json({
+    success: true,
+    message: 'Đã reset + tạo lại data demo',
+    shippers: 3,
+    residents: 2,
+  });
+});
+/**
  * GET /api/v1/admin/shippers
  * Admin xem danh sách shipper
  */

@@ -371,9 +371,9 @@
                   <p class="text-[11px] text-slate-500 mt-0.5">Tạo nhanh 3 shipper + 2 cư dân để test</p>
                 </div>
               </div>
-              <button onclick="seedDemo()"
+              <button onclick="forceSeedDemo()"
                       class="w-full py-3 rounded-xl bg-gradient-to-r from-brand-500 to-brand-700 text-white font-bold text-sm shadow-lg shadow-brand-500/30">
-                🌱 Tạo data demo
+                🔄 Reset + Tạo data demo
               </button>
             </div>
 
@@ -980,7 +980,24 @@
         }
       } catch (e) {}
     }
-    async function seedDemo() {
+        async function forceSeedDemo() {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/admin/force-seed-demo`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ adminKey }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Đã tạo ${data.shippers} shipper + ${data.residents} cư dân`, 'success');
+          loadOverview();
+        } else {
+          showToast(data.message || 'Lỗi', 'error');
+        }
+      } catch (e) {
+        showToast('Lỗi kết nối', 'error');
+      }
+    }
       try {
         const res = await fetch(`${API_BASE}/api/v1/admin/seed-demo`, {
           method: 'POST',
