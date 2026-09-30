@@ -99,6 +99,10 @@ const db = {
   otps: new Map(),
   otpSecurity: new Map(),
   hardware: new Map(),   // <-- THÊM
+   // ═══ V2 MỚI ═══
+  residents: new Map(),      // SĐT → thông tin cư dân
+  shippers: new Map(),        // shipper_code → thông tin shipper
+  deliveryLogs: [],           // Mảng log giao hàng
 };
 
 function createLocker(lockerId, size) {
@@ -389,12 +393,16 @@ function mapFromEntries(entries) {
 
 function serializeState() {
   return {
-    version: 1,
+    version: 2,                 // Đánh dấu V2
     saved_at: Date.now(),
     lockers: [...db.lockers.entries()],
     shipments: [...db.shipments.entries()],
     otps: [...db.otps.entries()],
     otpSecurity: [...db.otpSecurity.entries()],
+    // ═══ V2 MỚI ═══
+    residents: [...db.residents.entries()],
+    shippers: [...db.shippers.entries()],
+    deliveryLogs: db.deliveryLogs.slice(-1000),  // Chỉ lưu 1000 log gần nhất
   };
 }
 
@@ -427,6 +435,10 @@ function loadStateFromFile() {
     db.shipments = shipments;
     db.otps = otps;
     db.otpSecurity = otpSecurity;
+       // ═══ V2 MỚI ═══
+    db.residents = mapFromEntries(parsed.residents);
+    db.shippers = mapFromEntries(parsed.shippers);
+    db.deliveryLogs = Array.isArray(parsed.deliveryLogs) ? parsed.deliveryLogs : [];
 
     console.log(`[STATE] Restored state.json (${db.lockers.size} lockers, ${db.shipments.size} shipments)`);
     return true;
@@ -442,64 +454,7 @@ function loadStateFromFile() {
 
 function persistState() {
   saveStateToFile();
-
-  if (!sqliteDb) return;
-
-  for (const [id, locker] of db.lockers.entries()) {
-    sqliteDb.run(`
-      INSERT INTO lockers (id, status, door_closed, has_item, shipment_id, sender_phone, recipient_phone, qr_token, reserved_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        status=excluded.status, door_closed=excluded.door_closed, has_item=excluded.has_item,
-        shipment_id=excluded.shipment_id, sender_phone=excluded.sender_phone,
-        recipient_phone=excluded.recipient_phone, qr_token=excluded.qr_token, reserved_at=excluded.reserved_at
-    `, [
-      locker.locker_id || id,
-      locker.status,
-      locker.door_closed ? 1 : 0,
-      locker.has_item ? 1 : 0,
-      locker.shipment_id || null,
-      locker.sender_phone || null,
-      locker.recipient_phone || null,
-      locker.qr_token || null,
-      locker.reserved_at || null
-    ]);
-  }
-
-  for (const [shipment_id, s] of db.shipments.entries()) {
-    sqliteDb.run(`
-      INSERT INTO shipments (shipment_id, locker_id, sender_phone, recipient_phone, qr_token, status, created_at, occupied_at, completed_at, aborted_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(shipment_id) DO UPDATE SET
-        status=excluded.status, occupied_at=excluded.occupied_at, completed_at=excluded.completed_at, aborted_at=excluded.aborted_at
-    `, [
-      s.shipment_id,
-      s.locker_id,
-      s.sender_phone,
-      s.recipient_phone,
-      s.qr_token,
-      s.status || 'PENDING',
-      s.created_at,
-      s.occupied_at,
-      s.completed_at,
-      s.aborted_at
-    ]);
-  }
-
-  for (const [code, otp] of db.otps.entries()) {
-    sqliteDb.run(`
-      INSERT INTO otps (otp_code, locker_id, shipment_id, recipient_phone, expires_at, used)
-      VALUES (?, ?, ?, ?, ?, ?)
-      ON CONFLICT(otp_code) DO UPDATE SET used=excluded.used, expires_at=excluded.expires_at
-    `, [
-      otp.otp_code,
-      otp.locker_id,
-      otp.shipment_id,
-      otp.recipient_phone,
-      otp.expires_at,
-      otp.used ? 1 : 0
-    ]);
-  }
+  // SQLite disabled — chỉ dùng state.json
 }
 
 function getOtpSecurity(phone) {
