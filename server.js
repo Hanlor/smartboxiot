@@ -388,6 +388,11 @@ function publicLockerView(locker) {
     has_item: locker.has_item,
     led_color: locker.led_color,
     hardware_online: hwOnline,     // <-- THÊM
+     // ═══ V2 MỚI — Slots ═══
+    slots: locker.slots || [],
+    occupied_slots: locker.occupied_slots || 0,
+    total_slots: locker.total_slots || 3,
+    available_slots: locker.available_slots || 3,
   };
 
   if (locker.recipient_phone && locker.status !== LOCKER_STATUS.AVAILABLE) {
