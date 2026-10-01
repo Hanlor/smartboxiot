@@ -448,6 +448,11 @@
     let adminKey = sessionStorage.getItem('admin_key') || '';
     let pollTimer = null;
     let currentTab = 'overview';
+    const LOCKER_CONFIG_DISPLAY = {
+      1: 'A-501',
+      2: 'A-502',
+      3: 'Vãng lai',
+    };
 
     const LOCKER_STATUS_VI = {
       'AVAILABLE':      { label: 'TRỐNG',        color: 'emerald', icon: 'check-circle-2' },
@@ -649,6 +654,11 @@
               <span class="font-mono text-lg font-extrabold text-slate-900">TỦ #${L.locker_id}</span>
               <span class="text-[10px] px-2 py-0.5 rounded-full bg-white border border-slate-200 font-bold text-slate-600">${L.size}</span>
             </div>
+                        ${LOCKER_CONFIG_DISPLAY[L.locker_id] ? `
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-200 font-bold">
+                ${LOCKER_CONFIG_DISPLAY[L.locker_id]}
+              </span>
+            ` : ''}
             <span class="text-[10px] font-extrabold px-2.5 py-1 rounded-full ${c.bg} ${c.text} border ${c.border}">
               ${st.label}
             </span>
