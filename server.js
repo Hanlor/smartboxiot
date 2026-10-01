@@ -136,7 +136,7 @@ const db = {
 
 function createLocker(lockerId, size) {
   return {
-    // ═══ V1 — GIỮ NGUYÊN ═══
+    // ═══ V1 ═══
     locker_id: lockerId,
     size,
     status: LOCKER_STATUS.AVAILABLE,
@@ -151,15 +151,13 @@ function createLocker(lockerId, size) {
     qr_token: null,
     reserved_at: null,
 
-    // ═══ V2 — THÊM MỚI ═══
+    // ═══ V2 — 1 SLOT DUY NHẤT (slot_id = locker_id) ═══
     slots: [
-      { slot_id: 1, size: 'S', status: 'AVAILABLE', shipment_id: null },
-      { slot_id: 2, size: 'M', status: 'AVAILABLE', shipment_id: null },
-      { slot_id: 3, size: 'L', status: 'AVAILABLE', shipment_id: null },
+      { slot_id: lockerId, size, status: 'AVAILABLE', shipment_id: null },
     ],
     occupied_slots: 0,
-    total_slots: 3,
-    available_slots: 3,
+    total_slots: 1,
+    available_slots: 1,
   };
 }
 
@@ -274,18 +272,38 @@ function syncLockerSlotCounts(locker) {
  * Migration — thêm slots[] cho locker cũ (từ state.json version 1)
  */
 function migrateLockerToV2(locker) {
+  const lockerId = locker.locker_id;
+
+  // Nếu chưa có slots → tạo 1 slot
   if (!locker.slots) {
-    locker.slots = [
-      {
-        slot_id: 1,
-        size: 'S',
-        status: locker.status === 'OCCUPIED' ? 'OCCUPIED' : 'AVAILABLE',
-        shipment_id: locker.shipment_id || null,
-      },
-      { slot_id: 2, size: 'M', status: 'AVAILABLE', shipment_id: null },
-      { slot_id: 3, size: 'L', status: 'AVAILABLE', shipment_id: null },
-    ];
+    locker.slots = [{
+      slot_id: lockerId,
+      size: locker.size,
+      status: locker.status === 'OCCUPIED' ? 'OCCUPIED' : 'AVAILABLE',
+      shipment_id: locker.shipment_id || null,
+    }];
   }
+
+  // Nếu có nhiều slots (data cũ) → merge thành 1 slot
+  if (locker.slots.length > 1) {
+    const occupiedSlot = locker.slots.find(
+      s => s.status === 'OCCUPIED' || s.status === 'RESERVED'
+    );
+
+    locker.slots = [{
+      slot_id: lockerId,
+      size: locker.size,
+      status: occupiedSlot ? occupiedSlot.status : 'AVAILABLE',
+      shipment_id: occupiedSlot ? occupiedSlot.shipment_id : (locker.shipment_id || null),
+    }];
+  }
+
+  // Đảm bảo slot_id = locker_id
+  if (locker.slots[0]) {
+    locker.slots[0].slot_id = lockerId;
+    locker.slots[0].size = locker.size;
+  }
+
   syncLockerSlotCounts(locker);
   return locker;
 }
@@ -1455,43 +1473,40 @@ app.post('/api/v1/shipper/deposit', (req, res) => {
       return res.status(403).json({ success: false, message: 'Đơn không thuộc sàn của shipper' });
     }
 
-    // ⚠️ TÌM NGĂN PHÙ HỢP — ĐÂY LÀ LOGIC MỚI
+        // ⚠️ TÌM TỦ PHÙ HỢP
     const resident = db.residents.get(order.recipient_phone);
     let targetLocker = null;
-    let targetSlotId = null;
 
     if (resident && resident.status === 'ACTIVE') {
-      // Cư dân đã đăng ký → tìm ngăn DEDICATED của căn hộ đó
+      // Cư dân đã đăng ký → tìm tủ DEDICATED của căn hộ đó
       for (const [lid, config] of Object.entries(LOCKER_CONFIG)) {
         if (config.purpose === 'DEDICATED' && config.apartment === resident.apartment) {
           targetLocker = db.lockers.get(Number(lid));
-          targetSlotId = Number(lid);   // Ngăn 1 cho A-501, ngăn 2 cho A-502
           break;
         }
       }
     }
 
-    // Không tìm thấy (vãng lai) → dùng ngăn SHARED
+    // Không tìm thấy (vãng lai) → dùng tủ SHARED
     if (!targetLocker) {
       const sharedLockerId = Object.entries(LOCKER_CONFIG)
         .find(([_, c]) => c.purpose === 'SHARED')?.[0];
 
       if (sharedLockerId) {
         targetLocker = db.lockers.get(Number(sharedLockerId));
-        targetSlotId = Number(sharedLockerId);
       }
     }
 
-    if (!targetLocker || !targetSlotId) {
-      return res.status(503).json({ success: false, message: 'Không tìm được ngăn phù hợp' });
+    if (!targetLocker) {
+      return res.status(503).json({ success: false, message: 'Không tìm được tủ phù hợp' });
     }
 
-    // Check ngăn trống
-    const slot = targetLocker.slots.find(s => s.slot_id === targetSlotId);
+        // Check tủ trống
+    const slot = targetLocker.slots[0];
     if (!slot || slot.status !== 'AVAILABLE') {
       return res.status(503).json({
         success: false,
-        message: `Ngăn ${targetSlotId} đã có hàng. Vui lòng thử lại sau.`,
+        message: `Tủ #${targetLocker.locker_id} đã có hàng. Vui lòng thử lại sau.`,
         slot_status: slot ? slot.status : 'unknown',
       });
     }
@@ -1513,7 +1528,7 @@ app.post('/api/v1/shipper/deposit', (req, res) => {
     MOCK_ORDER_STATE.set(orderCode, {
       status: 'DELIVERED',
       delivered_at: now,
-      slot_id: targetSlotId,
+      slot_id:  targetLocker.locker_id, 
       locker_id: targetLocker.locker_id,
       shipper_code: shipper.code,
       log_id: logId,
@@ -1528,7 +1543,7 @@ app.post('/api/v1/shipper/deposit', (req, res) => {
       shipper_code: shipper.code,
       shipper_name: shipper.name,
       locker_id: targetLocker.locker_id,
-      slot_id: targetSlotId,
+      slot_id: targetLocker.locker_id, 
       size: order.size,
       recipient_phone: order.recipient_phone,
       recipient_apartment: resident ? resident.apartment : 'Vãng lai',
@@ -1553,16 +1568,16 @@ app.post('/api/v1/shipper/deposit', (req, res) => {
 
     persistState();
 
-    console.log(`📦 [DEPOSIT] ${shipper.code} → Ngăn ${targetSlotId} (${LOCKER_CONFIG[targetLocker.locker_id].purpose}) — đơn ${orderCode}`);
+        console.log(`📦 [DEPOSIT] ${shipper.code} → Tủ #${targetLocker.locker_id} (${LOCKER_CONFIG[targetLocker.locker_id].purpose}) — đơn ${orderCode}`);
 
     return res.json({
       success: true,
       message: 'Ghi nhận giao hàng thành công',
-      log: {
+            log: {
         log_id: logId,
         order_code: orderCode,
         locker_id: targetLocker.locker_id,
-        slot_id: targetSlotId,
+        slot_id: targetLocker.locker_id,
         locker_purpose: LOCKER_CONFIG[targetLocker.locker_id].purpose,
         delivered_at: now,
       },
@@ -2620,12 +2635,12 @@ app.post('/api/v1/resident/request-pickup', async (req, res) => {
       return res.status(400).json({ success: false, message: 'SĐT chưa đăng ký' });
     }
 
-    // Tìm ngăn DEDICATED của cư dân này
+       // Tìm tủ DEDICATED của cư dân này
     let targetLocker = null;
     for (const [lid, config] of Object.entries(LOCKER_CONFIG)) {
       if (config.purpose === 'DEDICATED' && config.apartment === resident.apartment) {
         const locker = db.lockers.get(Number(lid));
-        const slot = locker.slots.find(s => s.slot_id === Number(lid));
+        const slot = locker.slots[0];
         if (slot && slot.status === 'OCCUPIED') {
           targetLocker = locker;
           break;
@@ -2642,7 +2657,7 @@ app.post('/api/v1/resident/request-pickup', async (req, res) => {
       otp_code: otp,
       otp_type: OTP_TYPES.RECIPIENT_CARRIER,
       locker_id: targetLocker.locker_id,
-      shipment_id: targetLocker.slots.find(s => s.slot_id === targetLocker.locker_id)?.shipment_id,
+            shipment_id: targetLocker.slots[0]?.shipment_id,
       recipient_phone: phone,
       expires_at: Date.now() + OTP_TTL_MS,
       used: false,

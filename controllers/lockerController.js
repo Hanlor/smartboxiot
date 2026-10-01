@@ -175,20 +175,15 @@ async function createShipment(req, res) {
     return lockoutResponse(res, senderSecurity.locked_until);
   }
 
-    // ═══ V2: Tìm slot AVAILABLE đầu tiên ═══
-  const slot = helpers.findAvailableSlot(locker);
-  const slotId = slot ? slot.slot_id : null;
-
   const shipment_id = helpers.generateShipmentId();
   const now = Date.now();
 
   const shipment = {
     shipment_id,
     locker_id: lockerId,
-    slot_id: slotId,                  // V2
     sender_phone: senderIntl,
     recipient_phone: recipientIntl,
-    qr_token: null,
+    qr_token: null, // chưa cấp — chỉ cấp sau khi verify sender
     created_at: now,
     occupied_at: null,
     completed_at: null,
@@ -198,13 +193,6 @@ async function createShipment(req, res) {
   };
 
   db.shipments.set(shipment_id, shipment);
-
-  // ═══ V2: Đánh dấu slot ═══
-  if (slot) {
-    slot.status = 'RESERVED';
-    slot.shipment_id = shipment_id;
-    helpers.syncLockerSlotCounts(locker);
-  }
 
   locker.shipment_id = shipment_id;
   locker.sender_phone = senderIntl;
@@ -813,16 +801,6 @@ async function updateTelemetry(req, res) {
       const shipment = db.shipments.get(shipmentId);
       shipment.completed_at = Date.now();
       shipment.status = 'COMPLETED';
-    }
-        // ═══ V2: Giải phóng slot ═══
-    if (locker.slots && shipmentId) {
-      locker.slots.forEach(s => {
-        if (s.shipment_id === shipmentId) {
-          s.status = 'AVAILABLE';
-          s.shipment_id = null;
-        }
-      });
-      helpers.syncLockerSlotCounts(locker);
     }
 
     for (const [key, record] of db.otps.entries()) {

@@ -413,12 +413,7 @@ Tạo Pull Request
 📝 License
 Distributed under the MIT License. Xem LICENSE để biết thêm.
 
-👥 Nhóm thực hiện
-[Tên SV 1] — [MSSV] — Backend & DevOps
-
-[Tên SV 2] — [MSSV] — Frontend & UI/UX
-
-[Tên SV 3] — [MSSV] — Hardware & Firmware
+by HUỲNH VĂN KHUYÊN aka BOIHANDOI
 
 Giảng viên hướng dẫn: TS. [PHAN VĂN ĐỨC]
 

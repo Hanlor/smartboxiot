@@ -596,21 +596,21 @@
 
         document.getElementById('connStatus').textContent = 'Online';
 
-        const lockers = lockersRes.lockers;
-        let totalSlots = 0, availableSlots = 0, occupiedSlots = 0;
+               const lockers = lockersRes.lockers;
+        let availableCount = 0, occupiedCount = 0;
 
         lockers.forEach(L => {
-          if (L.slots) {
-            totalSlots += L.slots.length;
-            availableSlots += L.slots.filter(s => s.status === 'AVAILABLE').length;
-            occupiedSlots += L.slots.filter(s => s.status === 'OCCUPIED' || s.status === 'RESERVED').length;
+          const slot = L.slots && L.slots[0];
+          if (slot) {
+            if (slot.status === 'AVAILABLE') availableCount++;
+            else if (slot.status === 'OCCUPIED' || slot.status === 'RESERVED') occupiedCount++;
           }
         });
 
         document.getElementById('ovTotal').textContent = lockers.length;
-        document.getElementById('ovSlots').textContent = `${totalSlots} slots`;
-        document.getElementById('ovAvailable').textContent = availableSlots;
-        document.getElementById('ovOccupied').textContent = occupiedSlots;
+        document.getElementById('ovSlots').textContent = `${lockers.length} ngăn`;
+        document.getElementById('ovAvailable').textContent = availableCount;
+        document.getElementById('ovOccupied').textContent = occupiedCount;
         document.getElementById('ovResidents').textContent = residentsRes.total || 0;
 
         document.getElementById('ovLockers').innerHTML = lockers.map(L => renderLockerCard(L, true)).join('');
@@ -638,26 +638,12 @@
       };
       const c = colorMap[st.color];
 
-      const slotsHtml = (L.slots || []).map(s => {
-        const slotColor = s.status === 'AVAILABLE' ? 'bg-emerald-500' : s.status === 'OCCUPIED' ? 'bg-rose-500' : 'bg-amber-500';
-        return `
-          <div class="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
-            <div class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full ${slotColor}"></span>
-              <span class="text-xs font-mono font-bold text-slate-700">Slot ${s.slot_id}</span>
-              <span class="text-[10px] text-slate-400">Size ${s.size}</span>
-            </div>
-            <span class="text-[10px] font-bold ${s.status === 'AVAILABLE' ? 'text-emerald-600' : s.status === 'OCCUPIED' ? 'text-rose-600' : 'text-amber-600'}">
-              ${s.status}
-            </span>
-          </div>
-        `;
-      }).join('') || '<div class="text-xs text-slate-400 text-center py-2">Không có slot</div>';
+            // Không hiển thị slots — mỗi tủ 1 ngăn
 
-      return `
+            return `
         <div class="${c.bg} border ${c.border} rounded-2xl p-5">
-                    <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-2">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2 flex-wrap">
               <span class="font-mono text-lg font-extrabold text-slate-900">TỦ #${L.locker_id}</span>
               <span class="text-[10px] px-2 py-0.5 rounded-full bg-white border border-slate-200 font-bold text-slate-600">${L.size}</span>
               ${purposeLabel ? `
@@ -666,27 +652,15 @@
                 </span>
               ` : ''}
             </div>
-                        ${LOCKER_CONFIG_DISPLAY[L.locker_id] ? `
-              <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-200 font-bold">
-                ${LOCKER_CONFIG_DISPLAY[L.locker_id]}
-              </span>
-            ` : ''}
-            <span class="text-[10px] font-extrabold px-2.5 py-1 rounded-full ${c.bg} ${c.text} border ${c.border}">
-              ${st.label}
-            </span>
           </div>
 
-          ${!compact ? '' : `
-            <div class="bg-white rounded-xl p-3 mb-3">
-              <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Slots (${L.available_slots || 0}/${L.total_slots || 3} trống)</div>
-              ${slotsHtml}
-            </div>
-          `}
-
-          ${!compact ? slotsHtml : ''}
+          <div class="bg-white rounded-xl p-4 mb-3 text-center">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Trạng thái</div>
+            <div class="text-base font-extrabold ${c.text}">${st.label}</div>
+          </div>
 
           <button onclick="emergencyUnlockOne(${L.locker_id})"
-                  class="w-full mt-3 py-2.5 rounded-lg bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-slate-700 hover:text-rose-700 text-xs font-bold transition flex items-center justify-center gap-1.5">
+                  class="w-full py-2.5 rounded-lg bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-slate-700 hover:text-rose-700 text-xs font-bold transition flex items-center justify-center gap-1.5">
             <i data-lucide="unlock" style="width:13px;height:13px;"></i>
             Mở khẩn cấp
           </button>
