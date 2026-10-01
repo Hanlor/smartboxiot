@@ -620,7 +620,14 @@
       }
     }
 
-    function renderLockerCard(L, compact = false) {
+        function renderLockerCard(L, compact = false) {
+      const LOCKER_LABELS = {
+        1: { text: 'Cư dân A-501', color: 'brand' },
+        2: { text: 'Cư dân A-502', color: 'brand' },
+        3: { text: 'Khách vãng lai', color: 'slate' },
+      };
+      const purposeLabel = LOCKER_LABELS[L.locker_id] || null;
+
       const st = LOCKER_STATUS_VI[L.status] || { label: L.status, color: 'slate', icon: 'help-circle' };
       const colorMap = {
         emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700' },
@@ -649,10 +656,15 @@
 
       return `
         <div class="${c.bg} border ${c.border} rounded-2xl p-5">
-          <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2">
               <span class="font-mono text-lg font-extrabold text-slate-900">TỦ #${L.locker_id}</span>
               <span class="text-[10px] px-2 py-0.5 rounded-full bg-white border border-slate-200 font-bold text-slate-600">${L.size}</span>
+              ${purposeLabel ? `
+                <span class="text-[10px] px-2 py-0.5 rounded-full ${purposeLabel.color === 'brand' ? 'bg-brand-50 text-brand-700 border-brand-200' : 'bg-slate-50 text-slate-600 border-slate-200'} border font-bold">
+                  ${purposeLabel.text}
+                </span>
+              ` : ''}
             </div>
                         ${LOCKER_CONFIG_DISPLAY[L.locker_id] ? `
               <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-200 font-bold">
