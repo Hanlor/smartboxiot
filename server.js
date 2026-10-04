@@ -414,6 +414,7 @@ function getHardwareStatus() {
 }
 function publicLockerView(locker) {
   const hwOnline = isHardwareOnline();
+  const config = LOCKER_CONFIG[locker.locker_id] || {};
 
   const view = {
     locker_id: locker.locker_id,
@@ -423,6 +424,11 @@ function publicLockerView(locker) {
     has_item: locker.has_item,
     led_color: locker.led_color,
     hardware_online: hwOnline,
+
+    // ═══ V2 — Purpose ═══
+    purpose: config.purpose || 'SHARED',
+    apartment: config.apartment || null,
+    accepts_p2p: config.purpose === 'SHARED',   // ← quan trọng
 
     // ═══ V2 MỚI — Items ═══
     items: locker.items || [],
