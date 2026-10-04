@@ -4,52 +4,27 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#EA580C">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="SmartShip">
-  <title>SmartShip Shipper</title>
-  <link rel="manifest" href="/shipper-manifest.json">
-  <link rel="apple-touch-icon" href="/assets/uth-logo.png">
+  <title>SmartShip — Giao hàng</title>
   <link rel="stylesheet" href="/assets/premium.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script>
     tailwind.config = {
       theme: { extend: {
-        fontFamily: {
-          sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
-          mono: ['JetBrains Mono', 'monospace']
-        },
-        colors: {
-          ship: { 50:'#FFF7ED', 100:'#FFEDD5', 500:'#F97316', 600:'#EA580C', 700:'#C2410C' }
-        }
+        fontFamily: { sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+        colors: { ship: { 50:'#FFF7ED', 500:'#F97316', 600:'#EA580C', 700:'#C2410C' } }
       }}
     }
   </script>
   <style>
     body { background: #F8FAFC; }
-    .glass-header {
-      background: rgba(255,255,255,0.9);
-      backdrop-filter: blur(12px);
-    }
-    .btn-press {
-      transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .btn-press:active {
-      transform: scale(0.97);
-    }
-    input:focus {
-      outline: none;
-    }
-    /* PWA standalone tweaks */
-    @media (display-mode: standalone) {
-      .pwa-hide { display: none; }
-    }
+    .glass-header { background: rgba(255,255,255,0.9); backdrop-filter: blur(12px); }
+    .btn-press { transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1); }
+    .btn-press:active { transform: scale(0.97); }
   </style>
 </head>
 <body class="font-sans min-h-screen antialiased text-slate-900">
 
-  <!-- ═══ HEADER ═══ -->
   <header class="sticky top-0 z-50 glass-header border-b border-slate-200/70">
     <div class="max-w-md mx-auto px-4 h-14 flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -58,64 +33,54 @@
         </div>
         <div>
           <div class="font-extrabold text-sm leading-none tracking-tight text-slate-900">SmartShip</div>
-          <div class="text-[10px] text-slate-500 mt-0.5" id="subtitle">Shipper App</div>
+          <div class="text-[10px] text-slate-500 mt-0.5">Giao hàng vào tủ</div>
         </div>
       </div>
-      <button id="logoutBtn" onclick="logout()" class="hidden w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center transition active:scale-95">
-        <i data-lucide="log-out" class="text-slate-500" style="width:18px;height:18px;"></i>
-      </button>
+      <span class="px-3 py-1.5 rounded-full bg-ship-500 text-white text-[10px] font-extrabold uppercase tracking-wider">
+        SHIPPER
+      </span>
     </div>
   </header>
 
-  <main class="max-w-md mx-auto px-5 pt-6 pb-12">
+  <main class="max-w-md mx-auto px-5 pt-8 pb-12">
 
-    <!-- ═══ STEP 1: LOGIN ═══ -->
-    <section id="stepLogin" class="animate-slide-up">
+    <section id="stepScan" class="animate-slide-up">
       <div class="text-center mb-8">
         <div class="w-20 h-20 mx-auto mb-5 rounded-3xl bg-gradient-to-br from-ship-500 to-ship-700 flex items-center justify-center shadow-xl shadow-ship-500/30">
-          <i data-lucide="log-in" class="text-white" style="width:36px;height:36px;"></i>
+          <i data-lucide="scan-line" class="text-white" style="width:36px;height:36px;"></i>
         </div>
         <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight mb-1.5">
-          Đăng nhập shipper
+          Quét mã đơn hàng
         </h1>
         <p class="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
-          Nhập mã shipper được cấp bởi sàn để bắt đầu giao hàng
+          Nhập mã vận đơn — hệ thống tự xác minh với sàn
         </p>
       </div>
 
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-4">
-        <div class="mb-4">
-          <label class="block text-[11px] font-extrabold text-slate-700 mb-2 uppercase tracking-wide">
-            Mã shipper <span class="text-rose-500">*</span>
-          </label>
-          <div class="relative">
-            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-              <i data-lucide="badge-check" style="width:18px;height:18px;"></i>
-            </div>
-            <input id="loginCode" type="text" placeholder="SPX-001"
-                   class="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-slate-200 focus:border-ship-500 focus:ring-4 focus:ring-ship-500/10 outline-none text-slate-900 font-mono font-bold text-base uppercase transition">
+        <label class="block text-[11px] font-extrabold text-slate-700 mb-2 uppercase tracking-wide">
+          Mã đơn hàng <span class="text-rose-500">*</span>
+        </label>
+        <div class="relative mb-5">
+          <div class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+            <i data-lucide="package" style="width:18px;height:18px;"></i>
           </div>
+          <input id="orderCode" type="text" placeholder="SPXVN001" autofocus
+                 class="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-slate-200 focus:border-ship-500 focus:ring-4 focus:ring-ship-500/10 outline-none text-slate-900 font-mono font-bold text-base uppercase transition">
         </div>
 
-        <div class="mb-6">
-          <label class="block text-[11px] font-extrabold text-slate-700 mb-2 uppercase tracking-wide">
-            Số điện thoại <span class="text-rose-500">*</span>
-          </label>
-          <div class="relative">
-            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-              <i data-lucide="phone" style="width:18px;height:18px;"></i>
-            </div>
-            <input id="loginPhone" type="tel" inputmode="numeric" maxlength="12" placeholder="0911 111 111"
-                   class="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-slate-200 focus:border-ship-500 focus:ring-4 focus:ring-ship-500/10 outline-none text-slate-900 font-mono font-semibold text-base transition">
-          </div>
+        <div class="text-[10px] text-slate-400 mb-5">
+          Test: <code class="bg-slate-100 px-1.5 py-0.5 rounded">SPXVN001</code>
+          <code class="bg-slate-100 px-1.5 py-0.5 rounded ml-1">SPXVN002</code>
+          <code class="bg-slate-100 px-1.5 py-0.5 rounded ml-1">GHNVN001</code>
         </div>
 
-        <div id="errorLogin" class="hidden mb-4 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium"></div>
+        <div id="errorScan" class="hidden mb-4 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium"></div>
 
-        <button id="btnLogin" onclick="doLogin()"
+        <button id="btnDeposit" onclick="doDeposit()"
                 class="btn-press w-full py-4 rounded-xl bg-gradient-to-r from-ship-500 to-ship-700 text-white font-bold text-sm shadow-lg shadow-ship-500/30 flex items-center justify-center gap-2 disabled:opacity-50">
-          <span>Đăng nhập</span>
-          <i data-lucide="arrow-right" style="width:16px;height:16px;"></i>
+          <i data-lucide="package-plus" style="width:16px;height:16px;"></i>
+          <span>Giao vào tủ</span>
         </button>
       </div>
 
@@ -123,92 +88,12 @@
         <div class="flex gap-3">
           <i data-lucide="info" class="text-blue-600 shrink-0 mt-0.5" style="width:16px;height:16px;"></i>
           <div class="text-[11px] text-blue-900 leading-relaxed">
-            <b>Demo:</b> Dùng <code class="bg-blue-100 px-1.5 py-0.5 rounded font-mono">SPX-001</code> / <code class="bg-blue-100 px-1.5 py-0.5 rounded font-mono">0911111111</code>
+            <b>Không cần đăng nhập.</b> Hệ thống tự xác minh đơn hàng với sàn và tìm tủ phù hợp.
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ═══ STEP 2: SCAN ═══ -->
-    <section id="stepScan" class="hidden">
-      <div class="bg-gradient-to-br from-ship-500 to-ship-700 rounded-2xl p-5 mb-5 shadow-xl shadow-ship-500/20 text-white">
-        <div class="flex items-center gap-3">
-          <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
-            <i data-lucide="user-check" style="width:22px;height:22px;"></i>
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="text-[10px] font-bold opacity-80 uppercase tracking-wider">Xin chào</div>
-            <div class="text-base font-extrabold leading-tight truncate" id="shipperName">Le Van Ship</div>
-            <div class="text-[11px] opacity-90 font-mono" id="shipperInfo">SPX-001 · SHOPEE</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-4">
-        <h2 class="text-lg font-extrabold text-slate-900 tracking-tight mb-1">Quét đơn hàng</h2>
-        <p class="text-xs text-slate-500 mb-5">Nhập mã đơn từ nhãn vận chuyển</p>
-
-        <div class="mb-4">
-          <label class="block text-[11px] font-extrabold text-slate-700 mb-2 uppercase tracking-wide">
-            Mã đơn hàng <span class="text-rose-500">*</span>
-          </label>
-          <div class="relative">
-            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-              <i data-lucide="package" style="width:18px;height:18px;"></i>
-            </div>
-            <input id="orderCode" type="text" placeholder="SPXVN001"
-                   class="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-slate-200 focus:border-ship-500 focus:ring-4 focus:ring-ship-500/10 outline-none text-slate-900 font-mono font-bold text-base uppercase transition">
-          </div>
-          <div class="text-[10px] text-slate-400 mt-2">
-            Test: <code class="bg-slate-100 px-1.5 py-0.5 rounded">SPXVN001</code>
-            <code class="bg-slate-100 px-1.5 py-0.5 rounded ml-1">SPXVN002</code>
-          </div>
-        </div>
-
-        <div class="mb-6">
-          <label class="block text-[11px] font-extrabold text-slate-700 mb-2 uppercase tracking-wide">
-            Chọn tủ <span class="text-rose-500">*</span>
-          </label>
-          <div class="grid grid-cols-3 gap-2" id="lockerPicker">
-            <button onclick="pickLocker(1)" data-locker="1" class="locker-btn p-3 rounded-xl border-2 border-slate-200 text-center transition active:scale-95">
-              <div class="text-[9px] font-bold text-slate-400 uppercase">Tủ #1</div>
-              <div class="text-lg font-extrabold text-slate-900">S</div>
-            </button>
-            <button onclick="pickLocker(2)" data-locker="2" class="locker-btn p-3 rounded-xl border-2 border-slate-200 text-center transition active:scale-95">
-              <div class="text-[9px] font-bold text-slate-400 uppercase">Tủ #2</div>
-              <div class="text-lg font-extrabold text-slate-900">M</div>
-            </button>
-            <button onclick="pickLocker(3)" data-locker="3" class="locker-btn p-3 rounded-xl border-2 border-slate-200 text-center transition active:scale-95">
-              <div class="text-[9px] font-bold text-slate-400 uppercase">Tủ #3</div>
-              <div class="text-lg font-extrabold text-slate-900">L</div>
-            </button>
-          </div>
-        </div>
-
-        <div id="errorScan" class="hidden mb-4 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium"></div>
-
-        <button id="btnVerify" onclick="verifyOrder()"
-                class="btn-press w-full py-4 rounded-xl bg-gradient-to-r from-ship-500 to-ship-700 text-white font-bold text-sm shadow-lg shadow-ship-500/30 flex items-center justify-center gap-2 disabled:opacity-50">
-          <i data-lucide="scan-line" style="width:16px;height:16px;"></i>
-          <span>Xác minh đơn hàng</span>
-        </button>
-      </div>
-
-      <!-- Stats cá nhân -->
-      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-        <div class="flex items-center justify-between">
-          <div>
-            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tổng đơn đã giao</div>
-            <div class="text-2xl font-extrabold text-slate-900" id="statDeliveries">0</div>
-          </div>
-          <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center">
-            <i data-lucide="trending-up" class="text-emerald-600" style="width:22px;height:22px;"></i>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ═══ STEP 3: SUCCESS ═══ -->
     <section id="stepSuccess" class="hidden">
       <div class="text-center">
         <div class="w-24 h-24 mx-auto mb-5 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-2xl shadow-emerald-500/40 animate-scale-in">
@@ -218,34 +103,25 @@
         </div>
 
         <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight mb-1.5">Giao hàng thành công!</h1>
-        <p class="text-xs text-slate-500 mb-6">Hệ thống đã ghi nhận và thông báo cho cư dân</p>
+        <p class="text-xs text-slate-500 mb-6">Hệ thống đã ghi log và thông báo cho cư dân</p>
 
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-5 text-left">
           <div class="space-y-3">
             <div class="flex items-center justify-between pb-3 border-b border-slate-100">
               <span class="text-[11px] text-slate-500">Mã đơn</span>
-              <span class="font-mono font-bold text-slate-900 text-sm" id="successOrder">SPXVN001</span>
+              <span class="font-mono font-bold text-slate-900 text-sm" id="successOrder">—</span>
+            </div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+              <span class="text-[11px] text-slate-500">Sàn</span>
+              <span class="font-bold text-slate-900 text-sm" id="successCarrier">—</span>
             </div>
             <div class="flex items-center justify-between pb-3 border-b border-slate-100">
               <span class="text-[11px] text-slate-500">Người nhận</span>
-              <span class="font-mono font-bold text-slate-900 text-sm" id="successRecipient">0912 345 678</span>
-            </div>
-            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-              <span class="text-[11px] text-slate-500">Căn hộ</span>
-              <span class="font-bold text-slate-900 text-sm" id="successApartment">A-501</span>
+              <span class="font-bold text-slate-900 text-sm" id="successRecipient">—</span>
             </div>
             <div class="flex items-center justify-between">
               <span class="text-[11px] text-slate-500">Vị trí</span>
-              <span class="font-bold text-slate-900 text-sm" id="successLocker">Tủ #1 · Slot 1</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-5 text-left">
-          <div class="flex gap-3">
-            <i data-lucide="shield-check" class="text-emerald-600 shrink-0 mt-0.5" style="width:16px;height:16px;"></i>
-            <div class="text-[11px] text-emerald-900 leading-relaxed">
-              <b>Đã ghi log:</b> Mọi giao dịch được lưu với bằng chứng (thời gian, shipper, slot). Dùng để tra cứu khi có tranh chấp.
+              <span class="font-bold text-slate-900 text-sm" id="successLocker">—</span>
             </div>
           </div>
         </div>
@@ -262,237 +138,81 @@
   <script src="/assets/toast.js"></script>
   <script>
     const API_BASE = window.location.origin;
-    const PHONE_FMT = v => v.replace(/\D/g, '').replace(/(\d{3,4})(\d{3})(\d{3,4})/, '$1 $2 $3').trim();
 
-    let state = {
-      shipper_code: '',
-      shipper_name: '',
-      shipper_carrier: '',
-      order_code: '',
-      locker_id: null,
-      verified: null,
-    };
+    document.getElementById('orderCode').addEventListener('input', e => {
+      e.target.value = e.target.value.toUpperCase();
+    });
 
-    // Load from localStorage
-    const saved = localStorage.getItem('shipper_session');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        state.shipper_code = parsed.shipper_code;
-        state.shipper_name = parsed.shipper_name;
-        state.shipper_carrier = parsed.shipper_carrier;
-      } catch (e) {}
+    document.getElementById('orderCode').addEventListener('keypress', e => {
+      if (e.key === 'Enter') doDeposit();
+    });
+
+    function showErr(msg) {
+      const el = document.getElementById('errorScan');
+      el.textContent = msg;
+      el.classList.remove('hidden');
     }
 
-    // Auto login if saved
-    window.addEventListener('load', () => {
-      if (state.shipper_code) {
-        // Verify still valid
-        fetch(`${API_BASE}/api/v1/shipper/me?code=${state.shipper_code}`)
-          .then(r => r.json())
-          .then(d => {
-            if (d.success && d.shipper.status === 'ACTIVE') {
-              state.shipper_name = d.shipper.name;
-              state.shipper_carrier = d.shipper.carrier;
-              showScanScreen();
-            } else {
-              localStorage.removeItem('shipper_session');
-            }
-          })
-          .catch(() => {});
-      }
-    });
-
-    // Input: uppercase
-    ['loginCode', 'orderCode'].forEach(id => {
-      document.getElementById(id).addEventListener('input', e => {
-        e.target.value = e.target.value.toUpperCase();
-      });
-    });
-
-    document.getElementById('loginPhone').addEventListener('input', e => {
-      let v = e.target.value.replace(/\D/g, '').slice(0, 11);
-      e.target.value = v ? PHONE_FMT(v) : '';
-    });
-
-    function showScreen(name) {
-      ['stepLogin', 'stepScan', 'stepSuccess'].forEach(id => {
-        document.getElementById(id).classList.add('hidden');
-      });
+    function showStep(name) {
+      ['stepScan', 'stepSuccess'].forEach(id => document.getElementById(id).classList.add('hidden'));
       const el = document.getElementById(name);
       el.classList.remove('hidden');
       el.classList.remove('animate-slide-up');
       void el.offsetWidth;
       el.classList.add('animate-slide-up');
       window.scrollTo({ top: 0, behavior: 'smooth' });
-
-      document.getElementById('logoutBtn').classList.toggle('hidden', name === 'stepLogin');
-      document.getElementById('subtitle').textContent = name === 'stepLogin' ? 'Shipper App' : 'Đang làm việc';
     }
 
-    async function doLogin() {
-      const code = document.getElementById('loginCode').value.trim().toUpperCase();
-      const phone = document.getElementById('loginPhone').value.replace(/\D/g, '');
-      const errEl = document.getElementById('errorLogin');
-      errEl.classList.add('hidden');
-
-      if (!code) return showErr(errEl, 'Nhập mã shipper');
-      if (phone.length < 10) return showErr(errEl, 'SĐT không hợp lệ');
-
-      const btn = document.getElementById('btnLogin');
-      btn.disabled = true;
-      btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" style="width:16px;height:16px;"></i> Đang kiểm tra...';
-      lucide.createIcons();
-
-      try {
-        const res = await fetch(`${API_BASE}/api/v1/shipper/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ shipper_code: code, phone }),
-        });
-        const data = await res.json();
-
-        if (!data.success) {
-          btn.disabled = false;
-          btn.innerHTML = '<span>Đăng nhập</span><i data-lucide="arrow-right" style="width:16px;height:16px;"></i>';
-          lucide.createIcons();
-          return showErr(errEl, data.message || 'Đăng nhập thất bại');
-        }
-
-        state.shipper_code = data.shipper.code;
-        state.shipper_name = data.shipper.name;
-        state.shipper_carrier = data.shipper.carrier;
-
-        localStorage.setItem('shipper_session', JSON.stringify(state));
-
-        showScanScreen();
-        if (window.showToast) showToast(`Xin chào ${data.shipper.name}`, 'success');
-      } catch (e) {
-        btn.disabled = false;
-        btn.innerHTML = '<span>Đăng nhập</span><i data-lucide="arrow-right" style="width:16px;height:16px;"></i>';
-        lucide.createIcons();
-        showErr(errEl, 'Lỗi kết nối');
-      }
-    }
-
-    function showScanScreen() {
-      document.getElementById('shipperName').textContent = state.shipper_name;
-      document.getElementById('shipperInfo').textContent = `${state.shipper_code} · ${state.shipper_carrier}`;
-      document.getElementById('statDeliveries').textContent = '—';
-      showScreen('stepScan');
-    }
-
-    function pickLocker(id) {
-      state.locker_id = id;
-      document.querySelectorAll('.locker-btn').forEach(b => {
-        const selected = Number(b.dataset.locker) === id;
-        b.classList.toggle('border-ship-500', selected);
-        b.classList.toggle('bg-ship-50', selected);
-        b.classList.toggle('border-slate-200', !selected);
-      });
-    }
-
-    function showErr(el, msg) {
-      el.textContent = msg;
-      el.classList.remove('hidden');
-    }
-
-    async function verifyOrder() {
+    async function doDeposit() {
       const orderCode = document.getElementById('orderCode').value.trim().toUpperCase();
       const errEl = document.getElementById('errorScan');
       errEl.classList.add('hidden');
 
-      if (!orderCode) return showErr(errEl, 'Nhập mã đơn hàng');
-      if (!state.locker_id) return showErr(errEl, 'Chọn tủ giao hàng');
+      if (!orderCode) return showErr('Nhập mã đơn hàng');
 
-      state.order_code = orderCode;
-
-      const btn = document.getElementById('btnVerify');
+      const btn = document.getElementById('btnDeposit');
       btn.disabled = true;
-      btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" style="width:16px;height:16px;"></i> Đang xác minh...';
+      btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" style="width:16px;height:16px;"></i> Đang xử lý...';
       lucide.createIcons();
 
       try {
-        // Bước 1: Verify
-        const res = await fetch(`${API_BASE}/api/v1/shipper/verify`, {
+        const res = await fetch(`${API_BASE}/api/v1/locker/deposit`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            shipper_code: state.shipper_code,
-            order_code: orderCode,
-            locker_id: state.locker_id,
-          }),
+          body: JSON.stringify({ order_code: orderCode }),
         });
         const data = await res.json();
 
         if (!data.success) {
           btn.disabled = false;
-          btn.innerHTML = '<i data-lucide="scan-line" style="width:16px;height:16px;"></i><span>Xác minh đơn hàng</span>';
+          btn.innerHTML = '<i data-lucide="package-plus" style="width:16px;height:16px;"></i><span>Giao vào tủ</span>';
           lucide.createIcons();
-          return showErr(errEl, data.message || 'Xác minh thất bại');
+          return showErr(data.message || 'Giao hàng thất bại');
         }
 
-        state.verified = data;
-
-        // Bước 2: Deposit
-        const res2 = await fetch(`${API_BASE}/api/v1/shipper/deposit`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            shipper_code: state.shipper_code,
-            order_code: orderCode,
-            locker_id: state.locker_id,
-          }),
-        });
-        const data2 = await res2.json();
-
-        if (!data2.success) {
-          btn.disabled = false;
-          btn.innerHTML = '<i data-lucide="scan-line" style="width:16px;height:16px;"></i><span>Xác minh đơn hàng</span>';
-          lucide.createIcons();
-          return showErr(errEl, data2.message || 'Ghi nhận thất bại');
-        }
-
-        // Success
         document.getElementById('successOrder').textContent = orderCode;
-        document.getElementById('successRecipient').textContent = PHONE_FMT(data.order.recipient_apartment ? data.order.recipient_apartment : '');
-        document.getElementById('successRecipient').textContent = data.order.recipient_apartment || '—';
-        document.getElementById('successApartment').textContent = data.order.recipient_apartment || '—';
-        document.getElementById('successLocker').textContent = `Tủ #${data2.log.locker_id} · Slot ${data2.log.slot_id}`;
+        document.getElementById('successCarrier').textContent = data.order.carrier;
+        document.getElementById('successRecipient').textContent = data.order.recipient_apartment;
+        document.getElementById('successLocker').textContent = `Tủ #${data.log.locker_id} (${data.locker_status.total_items}/${data.locker_status.capacity})`;
 
-        showScreen('stepSuccess');
+        showStep('stepSuccess');
         if (window.fireConfetti) fireConfetti(40);
         if (window.notifyUser) notifyUser();
       } catch (e) {
         btn.disabled = false;
-        btn.innerHTML = '<i data-lucide="scan-line" style="width:16px;height:16px;"></i><span>Xác minh đơn hàng</span>';
+        btn.innerHTML = '<i data-lucide="package-plus" style="width:16px;height:16px;"></i><span>Giao vào tủ</span>';
         lucide.createIcons();
-        showErr(errEl, 'Lỗi kết nối');
+        showErr('Lỗi kết nối');
       }
     }
 
     function scanNext() {
       document.getElementById('orderCode').value = '';
-      document.getElementById('btnVerify').disabled = false;
-      document.getElementById('btnVerify').innerHTML = '<i data-lucide="scan-line" style="width:16px;height:16px;"></i><span>Xác minh đơn hàng</span>';
-      state.order_code = '';
-      state.locker_id = null;
-      state.verified = null;
-      document.querySelectorAll('.locker-btn').forEach(b => {
-        b.classList.remove('border-ship-500', 'bg-ship-50');
-        b.classList.add('border-slate-200');
-      });
-      showScreen('stepScan');
+      document.getElementById('btnDeposit').disabled = false;
+      document.getElementById('btnDeposit').innerHTML = '<i data-lucide="package-plus" style="width:16px;height:16px;"></i><span>Giao vào tủ</span>';
+      showStep('stepScan');
       lucide.createIcons();
-    }
-
-    function logout() {
-      localStorage.removeItem('shipper_session');
-      state = { shipper_code: '', shipper_name: '', shipper_carrier: '', order_code: '', locker_id: null, verified: null };
-      document.getElementById('loginCode').value = '';
-      document.getElementById('loginPhone').value = '';
-      showScreen('stepLogin');
-      if (window.showToast) showToast('Đã đăng xuất', 'info');
+      document.getElementById('orderCode').focus();
     }
 
     lucide.createIcons();
