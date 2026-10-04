@@ -108,7 +108,17 @@ async function createShipment(req, res) {
   }
 
   const locker = db.lockers.get(lockerId);
-
+  // ⚠️ CHẶN: P2P chỉ được dùng tủ SHARED (không được dùng tủ doanh nghiệp)
+  const lockerConfig = req.app.locals.LOCKER_CONFIG || {};
+  const config = lockerConfig[lockerId];
+  
+  if (config && config.purpose === 'DEDICATED') {
+    return res.status(403).json({
+      success: false,
+      message: `Tủ #${lockerId} là tủ dành riêng cho cư dân ${config.apartment}. Vui lòng chọn tủ vãng lai (tủ 3).`,
+      allowed_locker: 3,
+    });
+  }
   if (locker.status === constants.LOCKER_STATUS.MAINTENANCE) {
     return res.status(400).json({
       success: false,

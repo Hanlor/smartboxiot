@@ -799,6 +799,7 @@ app.locals.constants = {
   SERVO,
   LCD_WIDTH,
 };
+app.locals.LOCKER_CONFIG = LOCKER_CONFIG;
 app.locals.helpers = {
   applyStatus,
   clearLockerShipment,
