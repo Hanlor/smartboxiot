@@ -422,12 +422,16 @@ function publicLockerView(locker) {
     door_closed: locker.door_closed,
     has_item: locker.has_item,
     led_color: locker.led_color,
-    hardware_online: hwOnline,     // <-- THÊM
-     // ═══ V2 MỚI — Slots ═══
-    slots: locker.slots || [],
-    occupied_slots: locker.occupied_slots || 0,
-    total_slots: locker.total_slots || 3,
-    available_slots: locker.available_slots || 3,
+    hardware_online: hwOnline,
+
+    // ═══ V2 MỚI — Items ═══
+    items: locker.items || [],
+    capacity: locker.capacity || 5,
+    pending_deposit: locker.pending_deposit ? {
+      order_code: locker.pending_deposit.order_code,
+      carrier: locker.pending_deposit.carrier,
+      created_at: locker.pending_deposit.created_at,
+    } : null,
   };
 
   if (locker.recipient_phone && locker.status !== LOCKER_STATUS.AVAILABLE) {
