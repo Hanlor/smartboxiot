@@ -619,8 +619,76 @@
         document.getElementById('connStatus').textContent = 'Offline';
       }
     }
+function renderLockerCard(L, compact = false) {
+  const LOCKER_LABELS = {
+    1: { text: 'Cư dân A-501', color: 'brand' },
+    2: { text: 'Cư dân A-502', color: 'brand' },
+    3: { text: 'Khách vãng lai', color: 'slate' },
+  };
+  const purposeLabel = LOCKER_LABELS[L.locker_id] || null;
+  const st = LOCKER_STATUS_VI[L.status] || { label: L.status, color: 'slate', icon: 'help-circle' };
 
-        function renderLockerCard(L, compact = false) {
+  const colorMap = {
+    emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700' },
+    amber:   { bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-700' },
+    rose:    { bg: 'bg-rose-50',    border: 'border-rose-200',    text: 'text-rose-700' },
+    slate:   { bg: 'bg-slate-50',   border: 'border-slate-200',   text: 'text-slate-700' },
+    red:     { bg: 'bg-red-50',     border: 'border-red-200',     text: 'text-red-700' },
+  };
+  const c = colorMap[st.color];
+
+  const items = L.items || [];
+  const capacity = L.capacity || 5;
+
+  return `
+    <div class="${c.bg} border ${c.border} rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="font-mono text-lg font-extrabold text-slate-900">TỦ #${L.locker_id}</span>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-white border border-slate-200 font-bold text-slate-600">${L.size}</span>
+          ${purposeLabel ? `
+            <span class="text-[10px] px-2 py-0.5 rounded-full ${purposeLabel.color === 'brand' ? 'bg-brand-50 text-brand-700 border-brand-200' : 'bg-slate-50 text-slate-600 border-slate-200'} border font-bold">
+              ${purposeLabel.text}
+            </span>
+          ` : ''}
+        </div>
+        <span class="text-[10px] font-extrabold px-2.5 py-1 rounded-full ${c.bg} ${c.text} border ${c.border}">
+          ${st.label}
+        </span>
+      </div>
+
+      <div class="bg-white rounded-xl p-4 mb-3">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Kiện hàng</span>
+          <span class="text-sm font-extrabold ${items.length > 0 ? 'text-rose-600' : 'text-emerald-600'}">
+            ${items.length}/${capacity}
+          </span>
+        </div>
+        ${items.length > 0 ? `
+          <div class="space-y-1.5 mt-3">
+            ${items.map(i => `
+              <div class="flex items-center justify-between text-[11px] bg-slate-50 rounded-lg px-3 py-2">
+                <div>
+                  <span class="font-mono font-bold text-slate-900">${i.order_code}</span>
+                  <span class="text-[9px] text-slate-500 ml-1">${i.carrier || ''}</span>
+                </div>
+                <span class="font-mono text-[9px] text-slate-500">${i.shipper_code || ''}</span>
+              </div>
+            `).join('')}
+          </div>
+        ` : `
+          <div class="text-center text-xs text-slate-400 py-2">Không có kiện nào</div>
+        `}
+      </div>
+
+      <button onclick="emergencyUnlockOne(${L.locker_id})"
+              class="w-full py-2.5 rounded-lg bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-slate-700 hover:text-rose-700 text-xs font-bold transition flex items-center justify-center gap-1.5">
+        <i data-lucide="unlock" style="width:13px;height:13px;"></i>
+        Mở khẩn cấp
+      </button>
+    </div>
+  `;
+}
       const LOCKER_LABELS = {
         1: { text: 'Cư dân A-501', color: 'brand' },
         2: { text: 'Cư dân A-502', color: 'brand' },
@@ -666,7 +734,7 @@
           </button>
         </div>
       `;
-    }
+    
 
     // ═══════════════════════════════════════════════════
     // LOCKERS

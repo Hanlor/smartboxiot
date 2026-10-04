@@ -152,12 +152,8 @@ function createLocker(lockerId, size) {
     reserved_at: null,
 
     // ═══ V2 — 1 SLOT DUY NHẤT (slot_id = locker_id) ═══
-    slots: [
-      { slot_id: lockerId, size, status: 'AVAILABLE', shipment_id: null },
-    ],
-    occupied_slots: 0,
-    total_slots: 1,
-    available_slots: 1,
+        items: [],           // Mảng đơn đang trong tủ
+    capacity: 5,         // Sức chứa tối đa
   };
 }
 
@@ -272,39 +268,30 @@ function syncLockerSlotCounts(locker) {
  * Migration — thêm slots[] cho locker cũ (từ state.json version 1)
  */
 function migrateLockerToV2(locker) {
-  const lockerId = locker.locker_id;
-
-  // Nếu chưa có slots → tạo 1 slot
-  if (!locker.slots) {
-    locker.slots = [{
-      slot_id: lockerId,
-      size: locker.size,
-      status: locker.status === 'OCCUPIED' ? 'OCCUPIED' : 'AVAILABLE',
-      shipment_id: locker.shipment_id || null,
-    }];
+  // Migration: nếu có slots cũ → chuyển thành items
+  if (!locker.items) {
+    locker.items = [];
+    locker.capacity = locker.capacity || 5;
   }
-
-  // Nếu có nhiều slots (data cũ) → merge thành 1 slot
-  if (locker.slots.length > 1) {
-    const occupiedSlot = locker.slots.find(
-      s => s.status === 'OCCUPIED' || s.status === 'RESERVED'
-    );
-
-    locker.slots = [{
-      slot_id: lockerId,
-      size: locker.size,
-      status: occupiedSlot ? occupiedSlot.status : 'AVAILABLE',
-      shipment_id: occupiedSlot ? occupiedSlot.shipment_id : (locker.shipment_id || null),
-    }];
+  
+  // Nếu có slots cũ → chuyển đơn đang có sang items
+  if (locker.slots && locker.slots.length > 0) {
+    const occupiedSlot = locker.slots.find(s => s.status === 'OCCUPIED' && s.shipment_id);
+    if (occupiedSlot) {
+      locker.items.push({
+        order_code: occupiedSlot.shipment_id,
+        delivered_at: Date.now(),
+        status: 'OCCUPIED',
+      });
+    }
   }
-
-  // Đảm bảo slot_id = locker_id
-  if (locker.slots[0]) {
-    locker.slots[0].slot_id = lockerId;
-    locker.slots[0].size = locker.size;
-  }
-
-  syncLockerSlotCounts(locker);
+  
+  // Xóa slots cũ
+  delete locker.slots;
+  delete locker.occupied_slots;
+  delete locker.total_slots;
+  delete locker.available_slots;
+  
   return locker;
 }
 function clearLockerShipment(locker) {
@@ -1450,11 +1437,8 @@ app.post('/api/v1/shipper/deposit', (req, res) => {
   try {
     const { shipper_code, order_code, locker_id } = req.body || {};
 
-    if (!shipper_code || !order_code || !locker_id) {
-      return res.status(400).json({
-        success: false,
-        message: 'Thiếu shipper_code, order_code hoặc locker_id',
-      });
+    if (!shipper_code || !order_code) {
+      return res.status(400).json({ success: false, message: 'Thiếu shipper_code hoặc order_code' });
     }
 
     // Verify shipper
@@ -1473,12 +1457,11 @@ app.post('/api/v1/shipper/deposit', (req, res) => {
       return res.status(403).json({ success: false, message: 'Đơn không thuộc sàn của shipper' });
     }
 
-        // ⚠️ TÌM TỦ PHÙ HỢP
+    // Tìm tủ phù hợp
     const resident = db.residents.get(order.recipient_phone);
     let targetLocker = null;
 
     if (resident && resident.status === 'ACTIVE') {
-      // Cư dân đã đăng ký → tìm tủ DEDICATED của căn hộ đó
       for (const [lid, config] of Object.entries(LOCKER_CONFIG)) {
         if (config.purpose === 'DEDICATED' && config.apartment === resident.apartment) {
           targetLocker = db.lockers.get(Number(lid));
@@ -1487,80 +1470,71 @@ app.post('/api/v1/shipper/deposit', (req, res) => {
       }
     }
 
-    // Không tìm thấy (vãng lai) → dùng tủ SHARED
     if (!targetLocker) {
-      const sharedLockerId = Object.entries(LOCKER_CONFIG)
+      const sharedId = Object.entries(LOCKER_CONFIG)
         .find(([_, c]) => c.purpose === 'SHARED')?.[0];
-
-      if (sharedLockerId) {
-        targetLocker = db.lockers.get(Number(sharedLockerId));
-      }
+      if (sharedId) targetLocker = db.lockers.get(Number(sharedId));
     }
 
     if (!targetLocker) {
       return res.status(503).json({ success: false, message: 'Không tìm được tủ phù hợp' });
     }
 
-        // Check tủ trống
-    const slot = targetLocker.slots[0];
-    if (!slot || slot.status !== 'AVAILABLE') {
+    // Check sức chứa
+    if (!targetLocker.items) targetLocker.items = [];
+
+    if (targetLocker.items.length >= targetLocker.capacity) {
       return res.status(503).json({
         success: false,
-        message: `Tủ #${targetLocker.locker_id} đã có hàng. Vui lòng thử lại sau.`,
-        slot_status: slot ? slot.status : 'unknown',
+        message: `Tủ #${targetLocker.locker_id} đã đầy (${targetLocker.capacity}/${targetLocker.capacity})`,
       });
     }
 
-    // Check đã giao chưa
-    const existing = MOCK_ORDER_STATE.get(orderCode);
-    if (existing && existing.status === 'DELIVERED') {
-      return res.status(400).json({ success: false, message: 'Đơn đã được giao rồi' });
+    // Check đơn đã có chưa
+    if (targetLocker.items.some(i => i.order_code === orderCode)) {
+      return res.status(400).json({ success: false, message: 'Đơn đã có trong tủ' });
     }
 
     const now = Date.now();
     const logId = `LOG-${now}-${Math.random().toString(36).substr(2, 6)}`;
 
-    // Đánh dấu slot
-    slot.status = 'OCCUPIED';
-    slot.shipment_id = orderCode;
-
-    // Update order state
-    MOCK_ORDER_STATE.set(orderCode, {
-      status: 'DELIVERED',
-      delivered_at: now,
-      slot_id:  targetLocker.locker_id, 
-      locker_id: targetLocker.locker_id,
+    // Push đơn vào tủ
+    targetLocker.items.push({
+      order_code: orderCode,
+      carrier: order.carrier,
       shipper_code: shipper.code,
+      delivered_at: now,
+      recipient_phone: order.recipient_phone,
+      status: 'OCCUPIED',
       log_id: logId,
-      apartment: resident ? resident.apartment : null,
     });
 
-    // Log
-    const logEntry = {
+    // Update trạng thái tủ
+    if (targetLocker.items.length > 0) {
+      applyStatus(targetLocker, LOCKER_STATUS.OCCUPIED);
+    }
+    targetLocker.has_item = true;
+
+    // Log delivery
+    if (!db.deliveryLogs) db.deliveryLogs = [];
+    db.deliveryLogs.push({
       log_id: logId,
       order_code: orderCode,
       carrier: order.carrier,
       shipper_code: shipper.code,
       shipper_name: shipper.name,
       locker_id: targetLocker.locker_id,
-      slot_id: targetLocker.locker_id, 
-      size: order.size,
       recipient_phone: order.recipient_phone,
       recipient_apartment: resident ? resident.apartment : 'Vãng lai',
       resident_name: resident ? resident.name : 'Khách vãng lai',
       delivered_at: now,
       verified_chain: true,
-      locker_purpose: LOCKER_CONFIG[targetLocker.locker_id].purpose,
-    };
-
-    if (!db.deliveryLogs) db.deliveryLogs = [];
-    db.deliveryLogs.push(logEntry);
+    });
     if (db.deliveryLogs.length > 1000) {
       db.deliveryLogs = db.deliveryLogs.slice(-1000);
     }
 
-    // Stats
-    shipper.total_deliveries += 1;
+    shipper.total_deliveries = (shipper.total_deliveries || 0) + 1;
     if (resident) {
       resident.packages_received = (resident.packages_received || 0) + 1;
       resident.packages_pending = (resident.packages_pending || 0) + 1;
@@ -1568,27 +1542,29 @@ app.post('/api/v1/shipper/deposit', (req, res) => {
 
     persistState();
 
-        console.log(`📦 [DEPOSIT] ${shipper.code} → Tủ #${targetLocker.locker_id} (${LOCKER_CONFIG[targetLocker.locker_id].purpose}) — đơn ${orderCode}`);
+    // SMS cư dân
+    const totalItems = targetLocker.items.length;
+    if (resident) {
+      sendSMSViaAndroid(resident.phone,
+        `[SMARTBOX] Ban co kien hang moi tai Tu #${targetLocker.locker_id}.\n` +
+        `Hien co ${totalItems} kien trong tu.\n` +
+        `Mo app /pickup.html de lay hang.`
+      );
+    }
+
+    console.log(`📦 [DEPOSIT] ${shipper.code} → Tủ #${targetLocker.locker_id} — ${orderCode} (${totalItems}/${targetLocker.capacity})`);
 
     return res.json({
       success: true,
       message: 'Ghi nhận giao hàng thành công',
-            log: {
-        log_id: logId,
-        order_code: orderCode,
-        locker_id: targetLocker.locker_id,
-        slot_id: targetLocker.locker_id,
-        locker_purpose: LOCKER_CONFIG[targetLocker.locker_id].purpose,
-        delivered_at: now,
-      },
-      resident_notified: !!resident,
+      log: { log_id: logId, order_code: orderCode, locker_id: targetLocker.locker_id, delivered_at: now },
+      locker_status: { total_items: totalItems, capacity: targetLocker.capacity },
     });
   } catch (err) {
     console.error('[SHIPPER DEPOSIT] Error:', err.message);
     return res.status(500).json({ success: false, message: 'Internal error' });
   }
 });
-
 // ═══════════════════════════════════════════════════════════
 // V2 — DELIVERY LOGS (bằng chứng tranh chấp)
 // ═══════════════════════════════════════════════════════════
@@ -2624,7 +2600,6 @@ app.post('/api/v1/shipments/verify-return-otp', async (req, res) => {
 app.post('/api/v1/resident/request-pickup', async (req, res) => {
   try {
     const { recipient_phone } = req.body || {};
-
     const phone = normalizePhoneVN(recipient_phone);
     if (!phone) {
       return res.status(400).json({ success: false, message: 'SĐT không hợp lệ' });
@@ -2635,42 +2610,53 @@ app.post('/api/v1/resident/request-pickup', async (req, res) => {
       return res.status(400).json({ success: false, message: 'SĐT chưa đăng ký' });
     }
 
-       // Tìm tủ DEDICATED của cư dân này
+    // Tìm tủ của cư dân
     let targetLocker = null;
     for (const [lid, config] of Object.entries(LOCKER_CONFIG)) {
       if (config.purpose === 'DEDICATED' && config.apartment === resident.apartment) {
-        const locker = db.lockers.get(Number(lid));
-        const slot = locker.slots[0];
-        if (slot && slot.status === 'OCCUPIED') {
-          targetLocker = locker;
-          break;
-        }
+        targetLocker = db.lockers.get(Number(lid));
+        break;
       }
     }
 
     if (!targetLocker) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tủ' });
+    }
+
+    if (!targetLocker.items || targetLocker.items.length === 0) {
       return res.status(404).json({ success: false, message: 'Không có hàng chờ nhận' });
     }
 
+    // Sinh OTP
     const otp = generateOtpCode();
     db.otps.set(otp, {
       otp_code: otp,
       otp_type: OTP_TYPES.RECIPIENT_CARRIER,
       locker_id: targetLocker.locker_id,
-            shipment_id: targetLocker.slots[0]?.shipment_id,
       recipient_phone: phone,
       expires_at: Date.now() + OTP_TTL_MS,
       used: false,
     });
 
-    const msg = `[SMARTBOX] Ma lay hang: ${otp}\nNgan: ${targetLocker.locker_id}\nHieu luc 5 phut.`;
-    await sendSMSViaAndroid(phone, msg);
+    const totalItems = targetLocker.items.length;
+    await sendSMSViaAndroid(phone,
+      `[SMARTBOX] Ma lay hang: ${otp}\n` +
+      `Tu #${targetLocker.locker_id} — ${totalItems} kien\n` +
+      `Hieu luc 5 phut.`
+    );
+
     persistState();
 
     return res.json({
       success: true,
-      message: 'OTP đã gửi tới SĐT của bạn',
+      message: 'OTP đã gửi',
       locker_id: targetLocker.locker_id,
+      total_items: totalItems,
+      items: targetLocker.items.map(i => ({
+        order_code: i.order_code,
+        carrier: i.carrier,
+        delivered_at: i.delivered_at,
+      })),
     });
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Internal error' });
@@ -2679,15 +2665,12 @@ app.post('/api/v1/resident/request-pickup', async (req, res) => {
 
 app.post('/api/v1/resident/verify-pickup', (req, res) => {
   try {
-    const { recipient_phone, otp_code } = req.body || {};
+    const { recipient_phone, otp_code, taken_order_codes } = req.body || {};
 
     const phone = normalizePhoneVN(recipient_phone);
-    if (!phone) {
-      return res.status(400).json({ success: false, message: 'SĐT không hợp lệ' });
-    }
+    if (!phone) return res.status(400).json({ success: false, message: 'SĐT không hợp lệ' });
 
-    const code = String(otp_code).trim();
-    const otpRecord = db.otps.get(code);
+    const otpRecord = db.otps.get(String(otp_code).trim());
     const now = Date.now();
 
     const valid = otpRecord
@@ -2702,19 +2685,49 @@ app.post('/api/v1/resident/verify-pickup', (req, res) => {
 
     const locker = db.lockers.get(otpRecord.locker_id);
     if (!locker) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy ngăn' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tủ' });
     }
 
+    if (!locker.items) locker.items = [];
+
+    let removedCount = 0;
+
+    if (Array.isArray(taken_order_codes) && taken_order_codes.length > 0) {
+      // Lấy từng đơn được tick
+      locker.items = locker.items.filter(i => {
+        if (taken_order_codes.includes(i.order_code)) {
+          removedCount++;
+          return false;
+        }
+        return true;
+      });
+    } else {
+      // Lấy tất cả
+      removedCount = locker.items.length;
+      locker.items = [];
+    }
+
+    // Update trạng thái tủ
+    if (locker.items.length === 0) {
+      applyStatus(locker, LOCKER_STATUS.AVAILABLE);
+      locker.has_item = false;
+    }
+
+    // Xóa OTP
     otpRecord.used = true;
-    db.otps.delete(code);
+    db.otps.delete(String(otp_code).trim());
+
     persistState();
+
+    console.log(`✅ [PICKUP] ${phone} lấy ${removedCount} đơn từ tủ #${locker.locker_id}`);
 
     return res.json({
       success: true,
       action: 'UNLOCK_SERVO',
       locker_id: locker.locker_id,
-      slot_id: locker.locker_id,
-      message: 'Đã mở ngăn. Vui lòng lấy hàng và đóng cửa.',
+      removed_count: removedCount,
+      remaining_count: locker.items.length,
+      message: `Đã lấy ${removedCount} kiện. Còn ${locker.items.length} kiện.`,
     });
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Internal error' });
