@@ -1123,14 +1123,17 @@ app.get('/api/v1/admin/shippers', (req, res) => {
 // ═══════════════════════════════════════════════════════════
 // V2 — MOCK CARRIER ORDERS (giả lập đơn từ sàn)
 // ═══════════════════════════════════════════════════════════
+// ⚠️ Data khớp với residents:
+// +84769259051 = 0769259051 = A-501
+// +84912345678 = 0912345678 = A-502
+// +84987654321 = 0987654321 = chưa ĐK (vãng lai)
 const MOCK_CARRIER_ORDERS = {
-  'SPXVN001': { carrier: 'SHOPEE', recipient_phone: '+84912345678', apartment: 'A-501', size: 'S' },
-  'SPXVN002': { carrier: 'SHOPEE', recipient_phone: '+84769259051', apartment: 'A-502', size: 'M' },
-  'LZDVN001': { carrier: 'LAZADA', recipient_phone: '+84912345678', apartment: 'A-501', size: 'M' },
-  'GHNVN001': { carrier: 'GHN',    recipient_phone: '+84987654321', apartment: 'B-201', size: 'L' },
-  'GHNVN002': { carrier: 'GHN',    recipient_phone: '+84987654321', apartment: 'B-201', size: 'S' },
+  'SPXVN001': { carrier: 'SHOPEE', recipient_phone: '+84769259051', apartment: 'A-501', size: 'S' },  // → Tủ 1
+  'SPXVN002': { carrier: 'SHOPEE', recipient_phone: '+84912345678', apartment: 'A-502', size: 'M' },  // → Tủ 2
+  'LZDVN001': { carrier: 'LAZADA', recipient_phone: '+84912345678', apartment: 'A-502', size: 'M' },  // → Tủ 2
+  'GHNVN001': { carrier: 'GHN',    recipient_phone: '+84987654321', apartment: 'B-201', size: 'L' },  // → Tủ 3 (vãng lai)
+  'GHNVN002': { carrier: 'GHN',    recipient_phone: '+84987654321', apartment: 'B-201', size: 'S' },  // → Tủ 3 (vãng lai)
 };
-
 // Trạng thái đơn
 const MOCK_ORDER_STATE = new Map(); // order_code -> { status, delivered_at, slot_id, shipper_code, locker_id }
 
