@@ -154,6 +154,7 @@ function createLocker(lockerId, size) {
     // ═══ V2 — 1 SLOT DUY NHẤT (slot_id = locker_id) ═══
         items: [],           // Mảng đơn đang trong tủ
     capacity: 5,         // Sức chứa tối đa
+    pending_deposit: null,
   };
 }
 
@@ -1573,7 +1574,64 @@ app.get('/api/v1/admin/shipments', (req, res) => {
 // HARDWARE HEALTH MONITORING
 // ═══════════════════════════════════════════════════════════
 const HEALTH_TIMEOUT_MS = 60000;  // 60s không heartbeat = offline
-
+// Trong server.js — endpoint mới
+app.post('/api/v1/telemetry/deposit-confirm', (req, res) => {
+  const { locker_id, order_code } = req.body || {};
+  
+  const locker = db.lockers.get(Number(locker_id));
+  if (!locker || !locker.pending_deposit) {
+    return res.status(404).json({ success: false, message: 'Không có pending' });
+  }
+  
+  if (locker.pending_deposit.order_code !== order_code) {
+    return res.status(400).json({ success: false, message: 'Sai đơn hàng' });
+  }
+  
+  // Push vào items
+  const now = Date.now();
+  const logId = `LOG-${now}-${Math.random().toString(36).substr(2, 6)}`;
+  const pending = locker.pending_deposit;
+  
+  locker.items = locker.items || [];
+  locker.items.push({
+    order_code: pending.order_code,
+    carrier: pending.carrier,
+    delivered_at: now,
+    recipient_phone: pending.recipient_phone,
+    status: 'OCCUPIED',
+    log_id: logId,
+  });
+  
+  db.deliveryLogs.push({
+    log_id: logId,
+    order_code: pending.order_code,
+    carrier: pending.carrier,
+    locker_id: locker.locker_id,
+    recipient_phone: pending.recipient_phone,
+    recipient_apartment: pending.recipient_apartment,
+    resident_name: pending.resident_name,
+    delivered_at: now,
+    verified_chain: true,
+  });
+  
+  const resident = db.residents.get(pending.recipient_phone);
+  if (resident) {
+    resident.packages_received = (resident.packages_received || 0) + 1;
+    resident.packages_pending = (resident.packages_pending || 0) + 1;
+  }
+  
+  locker.pending_deposit = null;
+  applyStatus(locker, LOCKER_STATUS.OCCUPIED);
+  persistState();
+  
+  if (resident) {
+    sendSMSViaAndroid(resident.phone,
+      `[SMARTBOX] Ban co kien hang moi tai Tu #${locker.locker_id}.`
+    );
+  }
+  
+  return res.json({ success: true, order_code, locker_id: locker.locker_id });
+});
 /**
  * POST /api/v1/telemetry/health
  * ESP32 gửi định kỳ 30s
@@ -2318,22 +2376,21 @@ app.post('/api/v1/locker/deposit', (req, res) => {
 
     const orderCode = String(order_code).trim().toUpperCase();
 
-    // 1. Verify đơn với sàn
+    // Verify đơn
     const order = MOCK_CARRIER_ORDERS[orderCode];
     if (!order) {
-      return res.status(404).json({ success: false, message: 'Đơn không tồn tại trên hệ thống sàn' });
+      return res.status(404).json({ success: false, message: 'Đơn không tồn tại' });
     }
 
-    // 2. Check đã giao chưa
+    // Check đã giao chưa
     const existing = MOCK_ORDER_STATE.get(orderCode);
     if (existing && existing.status === 'DELIVERED') {
       return res.status(400).json({ success: false, message: 'Đơn đã được giao rồi' });
     }
 
-    // 3. Tìm cư dân nhận
     const resident = db.residents.get(order.recipient_phone);
 
-    // 4. Tìm tủ phù hợp
+    // Tìm tủ phù hợp
     let targetLocker = null;
 
     if (resident && resident.status === 'ACTIVE') {
@@ -2352,91 +2409,53 @@ app.post('/api/v1/locker/deposit', (req, res) => {
     }
 
     if (!targetLocker) {
-      return res.status(503).json({ success: false, message: 'Không tìm được tủ phù hợp' });
+      return res.status(503).json({ success: false, message: 'Không tìm được tủ' });
     }
 
-    // 5. Check sức chứa
+    // Check sức chứa
     if (!targetLocker.items) targetLocker.items = [];
     if (targetLocker.items.length >= targetLocker.capacity) {
       return res.status(503).json({
         success: false,
-        message: `Tủ #${targetLocker.locker_id} đã đầy (${targetLocker.capacity}/${targetLocker.capacity})`,
+        message: `Tủ #${targetLocker.locker_id} đã đầy`,
       });
     }
 
-    // 6. Push đơn vào tủ
-    const now = Date.now();
-    const logId = `LOG-${now}-${Math.random().toString(36).substr(2, 6)}`;
-
-    targetLocker.items.push({
-      order_code: orderCode,
-      carrier: order.carrier,
-      delivered_at: now,
-      recipient_phone: order.recipient_phone,
-      status: 'OCCUPIED',
-      log_id: logId,
-    });
-
-    // 7. Update trạng thái tủ
-    if (targetLocker.items.length > 0) {
-      applyStatus(targetLocker, LOCKER_STATUS.OCCUPIED);
+    // Check đang có pending khác không
+    if (targetLocker.pending_deposit) {
+      const age = Date.now() - targetLocker.pending_deposit.created_at;
+      if (age < 60000) {  // Còn trong 1 phút
+        return res.status(409).json({
+          success: false,
+          message: 'Tủ đang có shipper khác thao tác. Vui lòng thử lại sau.',
+        });
+      }
     }
-    targetLocker.has_item = true;
 
-    // 8. Log
-    if (!db.deliveryLogs) db.deliveryLogs = [];
-    db.deliveryLogs.push({
-      log_id: logId,
+    // ⚠️ LƯU PENDING — chưa push vào items
+    targetLocker.pending_deposit = {
       order_code: orderCode,
       carrier: order.carrier,
-      locker_id: targetLocker.locker_id,
       recipient_phone: order.recipient_phone,
       recipient_apartment: resident ? resident.apartment : 'Vãng lai',
       resident_name: resident ? resident.name : 'Khách vãng lai',
-      delivered_at: now,
-      verified_chain: true,
-    });
-    if (db.deliveryLogs.length > 1000) {
-      db.deliveryLogs = db.deliveryLogs.slice(-1000);
-    }
+      created_at: Date.now(),
+    };
 
-    if (resident) {
-      resident.packages_received = (resident.packages_received || 0) + 1;
-      resident.packages_pending = (resident.packages_pending || 0) + 1;
-    }
-
-    MOCK_ORDER_STATE.set(orderCode, {
-      status: 'DELIVERED',
-      delivered_at: now,
-      locker_id: targetLocker.locker_id,
-      log_id: logId,
-    });
+    // MỞ SERVO
+    applyStatus(targetLocker, LOCKER_STATUS.DEPOSITING);
 
     persistState();
 
-    // 9. SMS cư dân
-    const totalItems = targetLocker.items.length;
-    if (resident) {
-      sendSMSViaAndroid(resident.phone,
-        `[SMARTBOX] Ban co kien hang moi tai Tu #${targetLocker.locker_id}.\n` +
-        `Hien co ${totalItems} kien trong tu.\n` +
-        `Mo app /pickup.html de lay hang.`
-      );
-    }
-
-    console.log(`📦 [DEPOSIT] ${order.carrier} → Tủ #${targetLocker.locker_id} — ${orderCode} (${totalItems}/${targetLocker.capacity})`);
+    console.log(`🔓 [OPEN] ${order.carrier} — đơn ${orderCode} — mở tủ #${targetLocker.locker_id}`);
 
     return res.json({
       success: true,
-      message: 'Ghi nhận giao hàng thành công',
-      log: { log_id: logId, order_code: orderCode, locker_id: targetLocker.locker_id },
-      locker_status: { total_items: totalItems, capacity: targetLocker.capacity },
-      order: {
-        order_code: orderCode,
-        carrier: order.carrier,
-        recipient_apartment: resident ? resident.apartment : 'Vãng lai',
-        recipient_name: resident ? resident.name : 'Khách vãng lai',
-      },
+      message: 'Đã mở tủ. Vui lòng bỏ hàng và đóng cửa.',
+      action: 'UNLOCK_SERVO',
+      locker_id: targetLocker.locker_id,
+      order_code: orderCode,
+      waiting_for: 'DOOR_CLOSED',
     });
   } catch (err) {
     console.error('[LOCKER DEPOSIT] Error:', err.message);
