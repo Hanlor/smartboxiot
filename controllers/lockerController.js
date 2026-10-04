@@ -677,6 +677,18 @@ async function updateTelemetry(req, res) {
   }
 
   const locker = db.lockers.get(lockerId);
+  // ═══ TỰ PHỤC HỒI TỦ MAINTENANCE nếu cửa đóng + không có hàng ═══
+  if (locker.status === 'MAINTENANCE' && door.value && !item.value) {
+    console.log(`🔧 [AUTO RECOVER] Tủ #${locker.locker_id} — MAINTENANCE → AVAILABLE`);
+    helpers.applyStatus(locker, constants.LOCKER_STATUS.AVAILABLE);
+    helpers.persistState();
+
+    return res.status(200).json({
+      success: true,
+      current_status: locker.status,
+      message: 'Auto recovered from maintenance',
+    });
+  }
 
     // ═══ XỬ LÝ PENDING DEPOSIT (shipper đang bỏ hàng) ═══
   if (locker.pending_deposit && door.value && item.value) {
@@ -713,13 +725,7 @@ async function updateTelemetry(req, res) {
       db.deliveryLogs = db.deliveryLogs.slice(-1000);
     }
 
-    // Update order state
-    MOCK_ORDER_STATE.set(pending.order_code, {
-      status: 'DELIVERED',
-      delivered_at: now,
-      locker_id: locker.locker_id,
-      log_id: logId,
-    });
+  
 
     // Update resident stats
     const resident = db.residents.get(pending.recipient_phone);
@@ -731,8 +737,8 @@ async function updateTelemetry(req, res) {
     // Clear pending
     locker.pending_deposit = null;
 
-    // Chuyển tủ sang OCCUPIED
-    helpers.applyStatus(locker, S.OCCUPIED);
+        // Chuyển tủ sang OCCUPIED
+    helpers.applyStatus(locker, constants.LOCKER_STATUS.OCCUPIED);
     locker.door_closed = true;
     locker.has_item = true;
 
@@ -757,12 +763,30 @@ async function updateTelemetry(req, res) {
     });
   }
 
-  // ═══ XỬ LÝ PENDING + CỬA ĐÓNG NHƯNG KHÔNG CÓ HÀNG ═══
+    // ═══ XỬ LÝ PENDING + CỬA ĐÓNG NHƯNG KHÔNG CÓ HÀNG ═══
   if (locker.pending_deposit && door.value && !item.value) {
-    // Shipper đóng cửa nhưng không bỏ hàng → hủy pending
-    console.warn(`[DEPOSIT ABORTED] Tủ #${locker.locker_id} — ${locker.pending_deposit.order_code}`);
+    const pendingAge = Date.now() - locker.pending_deposit.created_at;
+
+    // Chưa đủ 30s → coi như tín hiệu sớm, chờ tiếp
+    if (pendingAge < 30000) {
+      locker.door_closed = door.value;
+      locker.has_item = item.value;
+      helpers.persistState();
+
+      console.log(`⏳ [DEPOSIT WAIT] Tủ #${locker.locker_id} — chờ thêm (${Math.round(pendingAge/1000)}s)`);
+
+      return res.status(200).json({
+        success: true,
+        current_status: locker.status,
+        message: 'Waiting — chưa xác nhận',
+        waiting_for: 'ITEM_DETECTED',
+      });
+    }
+
+    // Đã quá 30s mà vẫn không có hàng → hủy thật
+    console.warn(`[DEPOSIT ABORTED] Tủ #${locker.locker_id} — ${locker.pending_deposit.order_code} (sau ${Math.round(pendingAge/1000)}s)`);
     locker.pending_deposit = null;
-    helpers.applyStatus(locker, S.AVAILABLE);
+    helpers.applyStatus(locker, constants.LOCKER_STATUS.AVAILABLE);
     helpers.persistState();
 
     return res.status(200).json({
@@ -935,8 +959,10 @@ async function updateTelemetry(req, res) {
       sender_notified: smsConfirmSent,
     });
   }
-  // AVAILABLE + có hàng => lỗi cảm biến
-  if (locker.status === S.AVAILABLE && locker.door_closed && locker.has_item) {
+    // AVAILABLE + có hàng => lỗi cảm biến
+  // ⚠️ CHỈ báo MAINTENANCE nếu không có pending (tránh nhầm khi shipper đang thao tác)
+  if (locker.status === S.AVAILABLE && locker.door_closed && locker.has_item && !locker.pending_deposit) {
+    console.warn(`🔧 [SENSOR FAULT] Tủ #${locker.locker_id} — AVAILABLE nhưng có hàng`);
     helpers.applyStatus(locker, S.MAINTENANCE);
     helpers.persistState();
   } else {
