@@ -668,6 +668,99 @@ async function updateTelemetry(req, res) {
 
   const locker = db.lockers.get(lockerId);
 
+    // ═══ XỬ LÝ PENDING DEPOSIT (shipper đang bỏ hàng) ═══
+  if (locker.pending_deposit && door.value && item.value) {
+    // Cảm biến: cửa đóng + có hàng → xác nhận shipper đã bỏ hàng
+    const pending = locker.pending_deposit;
+    const now = Date.now();
+    const logId = `LOG-${now}-${Math.random().toString(36).substr(2, 6)}`;
+
+    // Push đơn vào items[]
+    locker.items = locker.items || [];
+    locker.items.push({
+      order_code: pending.order_code,
+      carrier: pending.carrier,
+      delivered_at: now,
+      recipient_phone: pending.recipient_phone,
+      status: 'OCCUPIED',
+      log_id: logId,
+    });
+
+    // Log
+    if (!db.deliveryLogs) db.deliveryLogs = [];
+    db.deliveryLogs.push({
+      log_id: logId,
+      order_code: pending.order_code,
+      carrier: pending.carrier,
+      locker_id: locker.locker_id,
+      recipient_phone: pending.recipient_phone,
+      recipient_apartment: pending.recipient_apartment,
+      resident_name: pending.resident_name,
+      delivered_at: now,
+      verified_chain: true,
+    });
+    if (db.deliveryLogs.length > 1000) {
+      db.deliveryLogs = db.deliveryLogs.slice(-1000);
+    }
+
+    // Update order state
+    MOCK_ORDER_STATE.set(pending.order_code, {
+      status: 'DELIVERED',
+      delivered_at: now,
+      locker_id: locker.locker_id,
+      log_id: logId,
+    });
+
+    // Update resident stats
+    const resident = db.residents.get(pending.recipient_phone);
+    if (resident) {
+      resident.packages_received = (resident.packages_received || 0) + 1;
+      resident.packages_pending = (resident.packages_pending || 0) + 1;
+    }
+
+    // Clear pending
+    locker.pending_deposit = null;
+
+    // Chuyển tủ sang OCCUPIED
+    helpers.applyStatus(locker, S.OCCUPIED);
+    locker.door_closed = true;
+    locker.has_item = true;
+
+    helpers.persistState();
+
+    // SMS cư dân
+    const totalItems = locker.items.length;
+    if (resident) {
+      helpers.sendSMSViaAndroid(resident.phone,
+        `[SMARTBOX] Ban co kien hang moi tai Tu #${locker.locker_id}.\n` +
+        `Hien co ${totalItems} kien trong tu.\n` +
+        `Mo app /pickup.html de lay hang.`
+      );
+    }
+
+    console.log(`📦 [DEPOSIT CONFIRMED] Tủ #${locker.locker_id} — đơn ${pending.order_code} (${totalItems}/${locker.capacity})`);
+
+    return res.status(200).json({
+      success: true,
+      current_status: locker.status,
+      message: 'Deposit confirmed — hàng đã vào tủ',
+    });
+  }
+
+  // ═══ XỬ LÝ PENDING + CỬA ĐÓNG NHƯNG KHÔNG CÓ HÀNG ═══
+  if (locker.pending_deposit && door.value && !item.value) {
+    // Shipper đóng cửa nhưng không bỏ hàng → hủy pending
+    console.warn(`[DEPOSIT ABORTED] Tủ #${locker.locker_id} — ${locker.pending_deposit.order_code}`);
+    locker.pending_deposit = null;
+    helpers.applyStatus(locker, S.AVAILABLE);
+    helpers.persistState();
+
+    return res.status(200).json({
+      success: true,
+      current_status: locker.status,
+      message: 'Deposit aborted — không có hàng',
+    });
+  }
   // Xử lý đóng tủ sau khi Admin Mở khẩn cấp
   if (locker.status === 'EMERGENCY') {
     locker.door_closed = door.value;
